@@ -88,15 +88,15 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <section className="grid gap-2 sm:grid-cols-2">
         <label className="text-xs text-slate-400">
           対象名
           <input
             required
             value={values.name}
             onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))}
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
             placeholder="例：抹茶ラテ"
           />
         </label>
@@ -105,7 +105,7 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
           <input
             value={values.category}
             onChange={(event) => setValues((prev) => ({ ...prev, category: event.target.value }))}
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
             placeholder="例：カフェ"
           />
         </label>
@@ -114,7 +114,7 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
           <input
             value={values.icon}
             onChange={(event) => setValues((prev) => ({ ...prev, icon: event.target.value }))}
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
             placeholder="🍵"
             maxLength={4}
           />
@@ -124,13 +124,14 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
           <textarea
             value={values.notes}
             onChange={(event) => setValues((prev) => ({ ...prev, notes: event.target.value }))}
-            className="mt-1 h-24 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
+            rows={1}
+            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-100 leading-tight focus:border-emerald-400 focus:outline-none"
             placeholder="気分や制限などがあれば"
           />
         </label>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+      <section className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-slate-200">リズム設定</h3>
           {activePresetLabel ? (
@@ -204,7 +205,7 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
         </label>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+      <section className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
         <h3 className="text-sm font-semibold text-slate-200">通知</h3>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-xs text-slate-400">

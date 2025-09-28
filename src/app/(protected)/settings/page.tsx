@@ -17,8 +17,6 @@ export default function SettingsPage() {
 
   const [primaryThreshold, setPrimaryThreshold] = useState(preferences.primaryThresholdDefault);
   const [strongThreshold, setStrongThreshold] = useState(preferences.strongThresholdDefault);
-  const [notifyStart, setNotifyStart] = useState(preferences.notifyHourStart);
-  const [notifyEnd, setNotifyEnd] = useState(preferences.notifyHourEnd);
   const [saving, setSaving] = useState(false);
 
   return (
@@ -26,7 +24,7 @@ export default function SettingsPage() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-100">設定</h1>
-          <p className="text-sm text-slate-400">通知しきい値や通知許可時間帯など、AkiLog全体の基本設定を調整します。</p>
+          <p className="text-sm text-slate-400">通知しきい値など、AkiLog全体の基本設定を調整します。</p>
         </div>
         <Link
           href="/"
@@ -63,30 +61,6 @@ export default function SettingsPage() {
             />
           </label>
         </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <label className="text-xs text-slate-400">
-            通知許可時間 (開始)
-            <input
-              type="number"
-              min={0}
-              max={23}
-              value={notifyStart}
-              onChange={(event) => setNotifyStart(Number(event.target.value))}
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
-            />
-          </label>
-          <label className="text-xs text-slate-400">
-            通知許可時間 (終了)
-            <input
-              type="number"
-              min={0}
-              max={23}
-              value={notifyEnd}
-              onChange={(event) => setNotifyEnd(Number(event.target.value))}
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
-            />
-          </label>
-        </div>
         <button
           type="button"
           disabled={saving || !session?.user}
@@ -96,8 +70,6 @@ export default function SettingsPage() {
             const nextPrefs = {
               primaryThresholdDefault: primaryThreshold,
               strongThresholdDefault: strongThreshold,
-              notifyHourStart: notifyStart,
-              notifyHourEnd: notifyEnd,
             };
             setPreferencesLocal(nextPrefs);
             await updatePreferencesRemote(supabase, session.user.id, nextPrefs);

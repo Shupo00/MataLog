@@ -145,7 +145,7 @@ export default function ItemDetailPage() {
         </div>
       </header>
 
-      <section className="grid gap-6 lg:grid-cols-[2fr_3fr]">
+      <section className="space-y-6">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
           <h2 className="text-lg font-semibold text-slate-100">設定</h2>
           <p className="text-sm text-slate-400">タイミングや通知を調整したいときは、下のフォームから更新できます。</p>

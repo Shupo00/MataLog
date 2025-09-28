@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { ScoreIndicator } from "@/components/score-indicator";
+import { cn } from "@/lib/utils";
 import { computeRii } from "@/lib/rii";
 import { useAkiStore } from "@/lib/store";
 import { calculateCadenceDrift, calculateDashboardStats } from "@/lib/stats";
@@ -24,7 +25,7 @@ export default function StatsPage() {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-100">統計ダッシュボード</h1>
           <p className="text-sm text-slate-400">
@@ -33,7 +34,7 @@ export default function StatsPage() {
         </div>
         <Link
           href="/"
-          className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-400/70"
+          className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-emerald-400/70 hover:text-emerald-200"
         >
           ホームに戻る
         </Link>
@@ -48,7 +49,7 @@ export default function StatsPage() {
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
         <h2 className="text-lg font-semibold text-slate-100">アイテム別スコア</h2>
-        <p className="text-sm text-slate-400">直近のRIIや最後に記録した日付をざっと確認できます。</p>
+        <p className="text-sm text-slate-400">各対象の最新Akiスコアと最終ログ日時です。</p>
         <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {itemScores.map(({ item, rii }) => (
             <div key={item.id} className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
@@ -61,7 +62,7 @@ export default function StatsPage() {
                 <p className="text-xs text-slate-400">
                   最終ログ: {rii.lastLog ? formatDateLabel(rii.lastLog.loggedAt) : "未記録"}
                 </p>
-                <p className="text-xs text-slate-500">基準間隔: {rii.sigmaDays.toFixed(1)} 日</p>
+                <p className="text-xs text-slate-500">目安間隔: {rii.sigmaDays.toFixed(1)} 日</p>
               </div>
             </div>
           ))}
@@ -89,7 +90,8 @@ export default function StatsPage() {
                   </td>
                   <td className="py-3 text-right">{row.targetDays.toFixed(1)}</td>
                   <td className="py-3 text-right">{row.averageGapDays ? row.averageGapDays.toFixed(1) : "-"}</td>
-                  <td className={`${row.averageGapDays ? (row.deltaDays >= 0 ? "text-emerald-300" : "text-amber-300") : ""} py-3 text-right`}>
+                  <td className={cn("py-3 text-right", row.averageGapDays ? (row.deltaDays >= 0 ? "text-emerald-300" : "text-amber-300") : "")}
+                  >
                     {row.averageGapDays ? row.deltaDays.toFixed(1) : "-"}
                   </td>
                 </tr>
@@ -110,10 +112,11 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, hint }: MetricCardProps) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 text-center">
       <div className="text-xs uppercase tracking-wide text-slate-400">{title}</div>
       <div className="mt-2 text-2xl font-semibold text-slate-100">{value}</div>
       <div className="text-xs text-slate-500">{hint}</div>
     </div>
   );
 }
+

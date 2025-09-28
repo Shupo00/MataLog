@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useSession, useSupabaseClient } from "@supabase/auth-helpers-react";
 
@@ -22,14 +23,22 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-slate-100">設定</h1>
-        <p className="text-sm text-slate-400">ここで登録したデフォルト値は、新規対象を作成するときに初期値として適用されます。</p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-100">設定</h1>
+          <p className="text-sm text-slate-400">通知しきい値や通知許可時間帯など、AkiLog全体の基本設定を調整します。</p>
+        </div>
+        <Link
+          href="/"
+          className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-emerald-400/70 hover:text-emerald-200"
+        >
+          ホームに戻る
+        </Link>
       </header>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-        <h2 className="text-lg font-semibold text-slate-100">通知の初期値</h2>
-        <p className="text-sm text-slate-400">対象作成時の標準設定を決めましょう。</p>
+        <h2 className="text-lg font-semibold text-slate-100">通知しきい値</h2>
+        <p className="text-sm text-slate-400">標準通知・強通知の既定値を設定します。</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <label className="text-xs text-slate-400">
             標準通知しきい値
@@ -56,7 +65,7 @@ export default function SettingsPage() {
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <label className="text-xs text-slate-400">
-            通知許可時間（開始）
+            通知許可時間 (開始)
             <input
               type="number"
               min={0}
@@ -67,7 +76,7 @@ export default function SettingsPage() {
             />
           </label>
           <label className="text-xs text-slate-400">
-            通知許可時間（終了）
+            通知許可時間 (終了)
             <input
               type="number"
               min={0}
@@ -96,13 +105,15 @@ export default function SettingsPage() {
           }}
           className="mt-6 rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {saving ? "保存中..." : "初期値を保存"}
+          {saving ? "保存中..." : "設定を保存"}
         </button>
       </section>
 
       <section className="rounded-2xl border border-rose-500/40 bg-slate-900/70 p-6">
-        <h2 className="text-lg font-semibold text-rose-200">リセット（注意）</h2>
-        <p className="text-sm text-slate-400">すべての対象とログを削除したい場合は、Supabase 側のデータベースから直接削除してください。</p>
+        <h2 className="text-lg font-semibold text-rose-200">注意事項</h2>
+        <p className="text-sm text-slate-400">
+          ベータ版のため一部の設定は今後変更される可能性があります。重要な項目は別途メモしておくことをおすすめします。
+        </p>
       </section>
     </div>
   );

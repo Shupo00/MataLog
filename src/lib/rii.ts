@@ -30,9 +30,12 @@ export function computeRii(
   const lastLog = itemLogs[0];
 
   if (!lastLog) {
+    const sigmaDays = determineSigmaDays(item);
+    const growthRate = resolveGrowthRate(item.notifications.thresholds.primary);
     return {
       score: 95,
-      sigmaDays: determineSigmaDays(item),
+      sigmaDays,
+      growthRate,
       hoursSinceLast: 0,
       noveltyFactor: 1,
     };
@@ -117,3 +120,6 @@ function resolveGrowthRate(primaryThreshold: number) {
   const normalized = clamp(primaryThreshold / 100, MIN_THRESHOLD, MAX_THRESHOLD);
   return -Math.log(1 - normalized);
 }
+
+
+

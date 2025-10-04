@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { create } from "zustand";
@@ -207,7 +207,7 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
 
     const itemRow = data as Database["public"]["Tables"]["items"]["Row"];
     set((state) => ({ items: [mapDbItemToAkiItem(itemRow), ...state.items] }));
-    return data.id;
+    return itemRow.id;
   },
   async updateItem(client, id, payload) {
     const supa = cast(client);

@@ -16,6 +16,7 @@ export interface ItemFormValues {
   notifyEmail: boolean;
   primaryThreshold: number;
   strongThreshold: number;
+  strongEnabled: boolean;
 }
 
 interface ItemFormProps {
@@ -101,7 +102,7 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
           />
         </label>
         <label className="text-xs text-slate-400">
-          カテゴリ
+          カテゴリ（任意）
           <input
             value={values.category}
             onChange={(event) => setValues((prev) => ({ ...prev, category: event.target.value }))}
@@ -226,7 +227,19 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
             />
             メール
           </label>
+          <label className="flex items-center gap-2 text-xs text-slate-400">
+            <input
+              type="checkbox"
+              checked={values.strongEnabled}
+              onChange={(event) => setValues((prev) => ({ ...prev, strongEnabled: event.target.checked }))}
+              className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-emerald-400 focus:ring-emerald-400"
+            />
+            強通知（ピークアラート）
+          </label>
         </div>
+        <p className="text-[11px] text-slate-500">
+          強通知をオンにすると、しきい値 {values.strongThreshold} で追加のリマインドを受け取れます。
+        </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-slate-400">
@@ -252,7 +265,11 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
               onChange={(event) =>
                 setValues((prev) => ({ ...prev, strongThreshold: Number(event.target.value) }))
               }
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
+              disabled={!values.strongEnabled}
+              className={cn(
+                "mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none",
+                !values.strongEnabled && "cursor-not-allowed opacity-50"
+              )}
             />
           </label>
         </div>
@@ -303,6 +320,7 @@ export function mapFormValuesToCreatePayload(values: ItemFormValues): CreateItem
     notifications: {
       enabled: values.notifyWebPush || values.notifyEmail,
       channels: { webPush: values.notifyWebPush, email: values.notifyEmail },
+      strongEnabled: values.strongEnabled,
       thresholds: {
         primary: values.primaryThreshold,
         strong: values.strongThreshold,
@@ -321,6 +339,7 @@ export function mapFormValuesToUpdatePayload(values: ItemFormValues): UpdateItem
     notifications: {
       enabled: values.notifyWebPush || values.notifyEmail,
       channels: { webPush: values.notifyWebPush, email: values.notifyEmail },
+      strongEnabled: values.strongEnabled,
       thresholds: {
         primary: values.primaryThreshold,
         strong: values.strongThreshold,
@@ -348,6 +367,7 @@ export function buildInitialValuesFromItem(
       notifyEmail: false,
       primaryThreshold: prefs?.primaryThresholdDefault ?? 70,
       strongThreshold: prefs?.strongThresholdDefault ?? 85,
+      strongEnabled: false,
     };
   }
 
@@ -361,12 +381,22 @@ export function buildInitialValuesFromItem(
     notifyEmail: item.notifications.channels.email,
     primaryThreshold: item.notifications.thresholds.primary,
     strongThreshold: item.notifications.thresholds.strong,
+    strongEnabled: item.notifications.strongEnabled,
   };
 }
 
 function isSameCadence(a: number, b: number) {
   return Math.abs(a - b) < 0.001;
 }
+
+
+
+
+
+
+
+
+
 
 
 

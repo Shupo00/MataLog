@@ -58,16 +58,16 @@ export default function LoginPage() {
       setErrorMessage(`ログインリンクの送信に失敗しました: ${error.message}`);
       return;
     }
-    setInfoMessage("メールに送信されたリンクからログインしてください。画面は開いたままで構いません。");
+    setInfoMessage("メールにログインリンクを送りました。数分以内にご確認ください。");
     setEmail("");
   };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-4 text-slate-100">
       <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl">
-        <h1 className="text-2xl font-semibold">飽きログにログイン</h1>
+        <h1 className="text-2xl font-semibold">またろぐにログイン</h1>
         <p className="mt-2 text-sm text-slate-400">
-          登録済みのメールアドレスにワンタイムリンクを送信します。
+          登録済みのメールアドレスにマジックリンクを送信します。
         </p>
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <label className="block text-xs text-slate-400">
@@ -86,7 +86,7 @@ export default function LoginPage() {
             disabled={isLoading}
             className="w-full rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {isLoading ? "送信中..." : "ログインリンクを送信"}
+            {isLoading ? "送信中..." : "ログインリンクを送る"}
           </button>
         </form>
         {errorMessage ? (
@@ -96,7 +96,7 @@ export default function LoginPage() {
           <p className="mt-4 text-sm text-emerald-300">{infoMessage}</p>
         ) : null}
         <p className="mt-6 text-xs text-slate-500">
-          アカウントをお持ちでない場合は、同じメールで初回ログインすると自動的に作成されます。
+          アカウントが見つからない場合は、新しいメールでログインすると自動で作成されます。
         </p>
         <Link href="/" className="mt-6 inline-block text-xs text-slate-400 hover:text-slate-200">
           ← トップへ戻る
@@ -109,20 +109,17 @@ export default function LoginPage() {
 function mapAuthErrorToMessage(error: string, description: string | null) {
   switch (error) {
     case "otp_expired":
-      return "ログインリンクの有効期限が切れています。もう一度リンクを送信してください。";
+      return "ログインリンクの有効期限が切れました。もう一度リンクを送信してください。";
     case "invalid_grant":
-      return "ログインリンクが無効です。最新のメールにあるリンクを使用してください。";
+      return "ログインリンクが無効です。最新のメールに記載されたリンクをお試しください。";
     case "callback_error":
       const normalized = (description ?? "").toLowerCase();
       if (normalized.includes("code verifier") || normalized.includes("auth code")) {
-        return "ログインリンクの有効期限が切れているか無効です。最新のメールから再度リンクを開いてください。";
+        return "ログインセッションの検証に失敗しました。最新のリンクを使って再度ログインしてください。";
       }
-      return description ?? "ログイン処理中にエラーが発生しました。もう一度リンクを送信してください。";
-    
+      return description ?? "ログイン時にエラーが発生しました。再度お試しください。";
+
     default:
-      return description ?? "ログインに失敗しました。もう一度お試しください。";
+      return description ?? "ログインで問題が発生しました。少し時間をあけてもう一度お試しください。";
   }
 }
-
-
-

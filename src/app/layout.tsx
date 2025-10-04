@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "飽きログ | AkiLog",
+  title: "またろぐ | Matalog",
   description:
-    "時間ベースで再燃タイミングを可視化し、行動に最適な間隔を提案するライフログダッシュボード",
+    "時間ベースで再会タイミングを設計し、快楽コンディションを可視化する習慣ログアプリ。",
 };
 
 export default async function RootLayout({

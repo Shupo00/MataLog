@@ -16,6 +16,7 @@ export interface NotificationSettings {
     webPush: boolean;
     email: boolean;
   };
+  strongEnabled: boolean;
   thresholds: ThresholdSettings;
 }
 
@@ -45,6 +46,10 @@ export interface UserPreferences {
   strongThresholdDefault: number;
   notifyHourStart: number; // 0-23
   notifyHourEnd: number; // 0-23
+  notifyChannel: "webpush" | "email" | "both";
+  dndStart: string | null;
+  dndEnd: string | null;
+  weeklyDigestWeekday: number | null;
 }
 
 export interface AkiState {

@@ -73,11 +73,11 @@ export default function AppShell({ children }: PropsWithChildren) {
           <header className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
               <Link href="/" className="flex items-baseline gap-2">
-                <span className="text-lg font-semibold tracking-wide">飽きログ</span>
-                <span className="text-xs uppercase tracking-widest text-slate-400">AkiLog</span>
+                <span className="text-lg font-semibold tracking-wide">またろぐ</span>
+                <span className="text-xs uppercase tracking-widest text-slate-400">Matalog</span>
               </Link>
               <p className="text-xs text-slate-400 sm:text-sm">
-                「飽きを設計し、楽しさを最大化する」リズム管理ダッシュボード
+                「再会のタイミング」をデザインする記録アプリ
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -105,7 +105,4 @@ export default function AppShell({ children }: PropsWithChildren) {
     </div>
   );
 }
-
-
-
 

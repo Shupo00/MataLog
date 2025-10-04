@@ -18,5 +18,8 @@ export function describeCadence(item: AkiItem) {
 export function describeThresholds(item: AkiItem) {
   const primary = item.notifications.thresholds.primary;
   const strong = item.notifications.thresholds.strong;
+  if (!item.notifications.strongEnabled) {
+    return `通知しきい値 ${primary}`;
+  }
   return `通知しきい値 ${primary}/${strong}`;
 }

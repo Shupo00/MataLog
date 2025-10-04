@@ -7,7 +7,6 @@ import { useSession, useSupabaseClient } from "@supabase/auth-helpers-react";
 import { ItemCard } from "@/components/item-card";
 import { computeRii } from "@/lib/rii";
 import { useAkiStore } from "@/lib/store";
-import { calculateDashboardStats } from "@/lib/stats";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/types";
 
@@ -35,8 +34,6 @@ export default function HomePage() {
     void hydrate(supabase, userId);
   }, [session?.user?.id, hasHydrated, hydrate, supabase]);
 
-  const stats = useMemo(() => calculateDashboardStats(items, logs), [items, logs]);
-
   const itemsWithMetrics = useMemo(() => {
     return items.map((item) => {
       const itemLogs = logs.filter((log) => log.itemId === item.id);
@@ -62,8 +59,9 @@ export default function HomePage() {
         clone.sort((a, b) => b.rii.hoursSinceLast - a.rii.hoursSinceLast);
         break;
       case "recent":
-        clone.sort((a, b) =>
-          new Date(b.item.updatedAt).getTime() - new Date(a.item.updatedAt).getTime()
+        clone.sort(
+          (a, b) =>
+            new Date(b.item.updatedAt).getTime() - new Date(a.item.updatedAt).getTime()
         );
         break;
       case "score":
@@ -74,21 +72,8 @@ export default function HomePage() {
     return clone;
   }, [filtered, sortBy]);
 
-  const averageScore = useMemo(() => {
-    if (!itemsWithMetrics.length) return 0;
-    const total = itemsWithMetrics.reduce((acc, curr) => acc + curr.rii.score, 0);
-    return Math.round(total / itemsWithMetrics.length);
-  }, [itemsWithMetrics]);
-
   return (
     <div className="space-y-8">
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label="対象数" value={items.length.toString()} hint="登録済みの対象" />
-        <SummaryCard label="本日" value={stats.todayCount.toString()} hint="記録済みログ" />
-        <SummaryCard label="今週" value={stats.weekCount.toString()} hint="直近7日のログ" />
-        <SummaryCard label="平均スコア" value={averageScore.toString()} hint="平均の再燃度" />
-      </section>
-
       <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           {SORT_OPTIONS.map((option) => (
@@ -118,7 +103,7 @@ export default function HomePage() {
             href="/items/new"
             className="hidden rounded-full border border-emerald-400 px-4 py-2 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-400/10 sm:inline-flex"
           >
-            ＋対象を追加
+            対象を追加
           </Link>
         </div>
       </section>
@@ -128,31 +113,10 @@ export default function HomePage() {
           <EmptyState />
         ) : (
           sorted.map(({ item, itemLogs, rii }) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              logs={itemLogs}
-              precomputedRii={rii}
-            />
+            <ItemCard key={item.id} item={item} logs={itemLogs} precomputedRii={rii} />
           ))
         )}
       </section>
-    </div>
-  );
-}
-
-interface SummaryCardProps {
-  label: string;
-  value: string;
-  hint: string;
-}
-
-function SummaryCard({ label, value, hint }: SummaryCardProps) {
-  return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-      <div className="text-xs uppercase tracking-wide text-slate-400">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-slate-100">{value}</div>
-      <div className="text-xs text-slate-500">{hint}</div>
     </div>
   );
 }

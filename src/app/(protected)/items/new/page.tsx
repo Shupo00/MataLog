@@ -1,6 +1,5 @@
 ﻿"use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useSession, useSupabaseClient } from "@supabase/auth-helpers-react";
@@ -31,20 +30,12 @@ export default function NewItemPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-100">対象を新規登録</h1>
-          <p className="text-sm text-slate-400">
-            対象名や目標リズム、通知の初期設定を入力してください。内容は後からいつでも変更できます。
-          </p>
-        </div>
-        <Link
-          href="/"
-          className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-400/70"
-        >
-          ダッシュボードに戻る
-        </Link>
+    <div className="space-y-4">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold text-slate-100">対象を新規登録</h1>
+        <p className="text-sm text-slate-400">
+          対象名や目標リズム、通知の初期設定を入力してください。内容は後からいつでも変更できます。
+        </p>
       </header>
       <ItemForm
         mode="create"

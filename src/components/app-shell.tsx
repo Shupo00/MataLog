@@ -101,7 +101,7 @@ export default function AppShell({ children }: PropsWithChildren) {
           </header>
         </div>
       </div>
-      <main className="mx-auto max-w-4xl px-6 pb-24 pt-12 sm:px-10 sm:pb-28">{children}</main>
+      <main className="mx-auto max-w-4xl px-6 pb-24 pt-2 sm:px-10 sm:pb-28 sm:pt-6">{children}</main>
     </div>
   );
 }

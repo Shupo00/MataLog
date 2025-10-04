@@ -1,6 +1,5 @@
 ﻿"use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { useSession, useSupabaseClient } from "@supabase/auth-helpers-react";
 
@@ -21,18 +20,10 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-100">設定</h1>
-          <p className="text-sm text-slate-400">通知しきい値など、またろぐ全体の基本設定を調整します。</p>
-        </div>
-        <Link
-          href="/"
-          className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-emerald-400/70 hover:text-emerald-200"
-        >
-          ホームに戻る
-        </Link>
+    <div className="space-y-4">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold text-slate-100">設定</h1>
+        <p className="text-sm text-slate-400">通知しきい値など、またろぐ全体の基本設定を調整します。</p>
       </header>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">

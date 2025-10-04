@@ -100,11 +100,6 @@ export default function ItemDetailPage() {
             <p className="text-sm text-slate-400">
               {item.category} ｜ {rii?.lastLog ? `最終ログ: ${formatRelative(rii.lastLog.loggedAt)}` : "未記録"}
             </p>
-            {rii ? (
-              <p className="text-xs text-slate-500">
-                目安間隔 {rii.sigmaDays.toFixed(1)} 日 / 経過 {rii.hoursSinceLast.toFixed(1)} 時間 / 新奇度 x{rii.noveltyFactor.toFixed(2)}
-              </p>
-            ) : null}
             {rii?.nextPrimaryAt ? (
               <p className="text-xs text-emerald-300">次の通知目安: {formatDateTime(rii.nextPrimaryAt)}</p>
             ) : null}

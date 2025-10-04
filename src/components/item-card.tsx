@@ -82,13 +82,19 @@ export function ItemCard({ item, logs, precomputedRii }: ItemCardProps) {
             <div className="mt-1 text-xs text-slate-400">
               <span>最終ログ: {lastLogText}</span>
             </div>
-            <div className="mt-1 text-xs text-slate-500">
-              <span>{describeThresholds(item)}</span>
+            <div className="mt-1 flex flex-col gap-1 text-xs text-slate-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+              <span className="text-slate-400">{describeThresholds(item)}</span>
               {rii.nextPrimaryAt ? (
-                <span className="ml-2">次の標準通知: {formatDateTime(rii.nextPrimaryAt)}</span>
+                <span className="inline-flex items-center gap-1 self-start rounded-full bg-slate-800/70 px-2 py-0.5 text-slate-200 sm:self-auto">
+                  <span className="text-emerald-300">標準</span>
+                  <span className="text-slate-300">{formatDateTime(rii.nextPrimaryAt)}</span>
+                </span>
               ) : null}
               {rii.nextStrongAt ? (
-                <span className="ml-2">強通知: {formatDateTime(rii.nextStrongAt)}</span>
+                <span className="inline-flex items-center gap-1 self-start rounded-full bg-slate-800/70 px-2 py-0.5 text-slate-200 sm:self-auto">
+                  <span className="text-rose-300">強通知</span>
+                  <span className="text-slate-300">{formatDateTime(rii.nextStrongAt)}</span>
+                </span>
               ) : null}
             </div>
           </div>

@@ -15,15 +15,16 @@ export default function NewItemPage() {
   const supabase = useSupabaseClient<Database>();
   const addItem = useAkiStore((state) => state.addItem);
   const preferences = useAkiStore((state) => state.preferences);
-  const { primaryThresholdDefault, strongThresholdDefault } = preferences;
+  const { primaryThresholdDefault, strongThresholdDefault, notifyChannel } = preferences;
 
   const initialValues = useMemo(
     () =>
       buildInitialValuesFromItem(null, {
         primaryThresholdDefault,
         strongThresholdDefault,
+        notifyChannel,
       }),
-    [primaryThresholdDefault, strongThresholdDefault]
+    [primaryThresholdDefault, strongThresholdDefault, notifyChannel]
   );
 
   const [isSaving, setIsSaving] = useState(false);
@@ -69,6 +70,9 @@ export default function NewItemPage() {
     </div>
   );
 }
+
+
+
 
 
 

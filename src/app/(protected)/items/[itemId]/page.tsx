@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -41,6 +41,7 @@ export default function ItemDetailPage() {
   const [quickNote, setQuickNote] = useState("");
   const [isSavingLog, setIsSavingLog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   if (!item) {
     return (
@@ -74,15 +75,20 @@ export default function ItemDetailPage() {
     setQuickSatisfaction(80);
   };
 
-  const handleDeleteItem = async () => {
-    setIsDeleting(true);
-    await deleteItem(supabase, item.id);
-    setIsDeleting(false);
-    router.push("/");
+  const handleDeleteConfirmed = async () => {
+    try {
+      setIsDeleting(true);
+      await deleteItem(supabase, item.id);
+      router.push("/");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
   };
 
   return (
-    <div className="space-y-8">
+    <>
+      <div className="space-y-8">
       <header className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-6">
           {rii ? <ScoreIndicator score={rii.score} size="lg" /> : null}
@@ -139,7 +145,7 @@ export default function ItemDetailPage() {
         </div>
       </header>
 
-      <section className="grid gap-6 lg:grid-cols-[2fr_3fr]">
+      <section className="space-y-6">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
           <h2 className="text-lg font-semibold text-slate-100">設定</h2>
           <p className="text-sm text-slate-400">タイミングや通知を調整したいときは、下のフォームから更新できます。</p>
@@ -151,7 +157,7 @@ export default function ItemDetailPage() {
                 const payload = mapFormValuesToUpdatePayload(values);
                 await updateItem(supabase, item.id, payload);
               }}
-              onDelete={handleDeleteItem}
+              onDelete={() => setShowDeleteModal(true)}
             />
             {isDeleting ? <p className="mt-2 text-xs text-slate-400">削除を実行しています...</p> : null}
           </div>
@@ -168,7 +174,48 @@ export default function ItemDetailPage() {
           </div>
         </div>
       </section>
-    </div>
+      </div>
+
+      {showDeleteModal ? (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm">
+          <div className="flex h-full items-center justify-center px-4">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-item-title"
+              className="w-full max-w-md space-y-4 rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-200 shadow-2xl"
+            >
+              <div className="space-y-1">
+                <h2 id="delete-item-title" className="text-lg font-semibold text-slate-100">
+                  この対象を削除しますか？
+                </h2>
+                <p className="text-sm text-slate-400">
+                  削除すると『{item.icon ? `${item.icon} ` : ""}{item.name}』のログや通知設定もすべて消えます。この操作は取り消せません。
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                  className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteConfirmed}
+                  disabled={isDeleting}
+                  className="rounded-full bg-red-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-inner transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isDeleting ? "削除中..." : "削除する"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 

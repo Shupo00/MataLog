@@ -1,13 +1,16 @@
-﻿import { addHours, differenceInHours, parseISO } from "date-fns";
+﻿import { addHours, parseISO } from "date-fns";
 
 import { AkiItem, AkiLog, ThresholdSettings } from "@/lib/types";
 import { average, clamp } from "@/lib/utils";
 
 const DEFAULT_CADENCE_DAYS = 7;
+const MIN_THRESHOLD = 0.05;
+const MAX_THRESHOLD = 0.99;
 
 export interface RiiComputation {
   score: number;
   sigmaDays: number;
+  growthRate: number;
   lastLog?: AkiLog;
   hoursSinceLast: number;
   noveltyFactor: number;
@@ -39,22 +42,26 @@ export function computeRii(
   const sigmaHours = sigmaDays * 24;
   const hoursSinceLast = Math.max(
     0,
-    differenceInHours(now, parseISO(lastLog.loggedAt))
+    (now.getTime() - parseISO(lastLog.loggedAt).getTime()) / (1000 * 60 * 60)
   );
+  const growthRate = resolveGrowthRate(item.notifications.thresholds.primary);
   const noveltyFactor = computeNoveltyFactor(itemLogs, sigmaHours);
 
-  const baseScore = 100 * (1 - Math.exp(-hoursSinceLast / sigmaHours));
+  const normalizedTime = sigmaHours > 0 ? hoursSinceLast / sigmaHours : 0;
+  const baseScore = 100 * (1 - Math.exp(-growthRate * normalizedTime));
   const score = clamp(Math.round(baseScore * noveltyFactor), 0, 100);
 
   const nextPrimaryAt = predictNextFire(
     lastLog,
     sigmaHours,
-    item.notifications.thresholds
+    item.notifications.thresholds,
+    growthRate
   );
 
   return {
     score,
     sigmaDays,
+    growthRate,
     lastLog,
     hoursSinceLast,
     noveltyFactor,
@@ -74,7 +81,7 @@ function computeNoveltyFactor(itemLogs: AkiLog[], sigmaHours: number) {
   for (let i = 0; i < recent.length - 1; i += 1) {
     const current = parseISO(recent[i].loggedAt);
     const next = parseISO(recent[i + 1].loggedAt);
-    diffs.push(Math.abs(differenceInHours(current, next)));
+    diffs.push(Math.abs(current.getTime() - next.getTime()) / (1000 * 60 * 60));
   }
   const avgGap = average(diffs);
   if (!avgGap) return 0.8;
@@ -86,13 +93,17 @@ function computeNoveltyFactor(itemLogs: AkiLog[], sigmaHours: number) {
 function predictNextFire(
   lastLog: AkiLog,
   sigmaHours: number,
-  thresholds: ThresholdSettings
+  thresholds: ThresholdSettings,
+  growthRate: number
 ) {
   const baseDate = parseISO(lastLog.loggedAt);
   const computeTime = (target: number) => {
-    if (target >= 100) return undefined;
-    const hours = -sigmaHours * Math.log(1 - target / 100);
-    if (!Number.isFinite(hours)) return undefined;
+    const normalized = clamp(target / 100, MIN_THRESHOLD, MAX_THRESHOLD);
+    if (!Number.isFinite(growthRate) || growthRate <= 0) return undefined;
+    const hours = -(
+      (sigmaHours / growthRate) * Math.log(1 - normalized)
+    );
+    if (!Number.isFinite(hours) || hours <= 0) return undefined;
     return addHours(baseDate, hours).toISOString();
   };
 
@@ -100,4 +111,9 @@ function predictNextFire(
     primary: computeTime(thresholds.primary),
     strong: computeTime(thresholds.strong),
   };
+}
+
+function resolveGrowthRate(primaryThreshold: number) {
+  const normalized = clamp(primaryThreshold / 100, MIN_THRESHOLD, MAX_THRESHOLD);
+  return -Math.log(1 - normalized);
 }

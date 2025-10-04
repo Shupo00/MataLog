@@ -16,6 +16,7 @@ export interface ItemFormValues {
   notifyEmail: boolean;
   primaryThreshold: number;
   strongThreshold: number;
+  strongEnabled: boolean;
 }
 
 interface ItemFormProps {
@@ -88,24 +89,24 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <section className="grid gap-2 sm:grid-cols-2">
         <label className="text-xs text-slate-400">
           対象名
           <input
             required
             value={values.name}
             onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))}
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
             placeholder="例：抹茶ラテ"
           />
         </label>
         <label className="text-xs text-slate-400">
-          カテゴリ
+          カテゴリ（任意）
           <input
             value={values.category}
             onChange={(event) => setValues((prev) => ({ ...prev, category: event.target.value }))}
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
             placeholder="例：カフェ"
           />
         </label>
@@ -114,7 +115,7 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
           <input
             value={values.icon}
             onChange={(event) => setValues((prev) => ({ ...prev, icon: event.target.value }))}
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
             placeholder="🍵"
             maxLength={4}
           />
@@ -124,13 +125,14 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
           <textarea
             value={values.notes}
             onChange={(event) => setValues((prev) => ({ ...prev, notes: event.target.value }))}
-            className="mt-1 h-24 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
+            rows={1}
+            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-100 leading-tight focus:border-emerald-400 focus:outline-none"
             placeholder="気分や制限などがあれば"
           />
         </label>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+      <section className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-slate-200">リズム設定</h3>
           {activePresetLabel ? (
@@ -204,7 +206,7 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
         </label>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+      <section className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
         <h3 className="text-sm font-semibold text-slate-200">通知</h3>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-xs text-slate-400">
@@ -225,7 +227,19 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
             />
             メール
           </label>
+          <label className="flex items-center gap-2 text-xs text-slate-400">
+            <input
+              type="checkbox"
+              checked={values.strongEnabled}
+              onChange={(event) => setValues((prev) => ({ ...prev, strongEnabled: event.target.checked }))}
+              className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-emerald-400 focus:ring-emerald-400"
+            />
+            強通知（ピークアラート）
+          </label>
         </div>
+        <p className="text-[11px] text-slate-500">
+          強通知をオンにすると、しきい値 {values.strongThreshold} で追加のリマインドを受け取れます。
+        </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-slate-400">
@@ -251,7 +265,11 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
               onChange={(event) =>
                 setValues((prev) => ({ ...prev, strongThreshold: Number(event.target.value) }))
               }
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
+              disabled={!values.strongEnabled}
+              className={cn(
+                "mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none",
+                !values.strongEnabled && "cursor-not-allowed opacity-50"
+              )}
             />
           </label>
         </div>
@@ -302,6 +320,7 @@ export function mapFormValuesToCreatePayload(values: ItemFormValues): CreateItem
     notifications: {
       enabled: values.notifyWebPush || values.notifyEmail,
       channels: { webPush: values.notifyWebPush, email: values.notifyEmail },
+      strongEnabled: values.strongEnabled,
       thresholds: {
         primary: values.primaryThreshold,
         strong: values.strongThreshold,
@@ -320,6 +339,7 @@ export function mapFormValuesToUpdatePayload(values: ItemFormValues): UpdateItem
     notifications: {
       enabled: values.notifyWebPush || values.notifyEmail,
       channels: { webPush: values.notifyWebPush, email: values.notifyEmail },
+      strongEnabled: values.strongEnabled,
       thresholds: {
         primary: values.primaryThreshold,
         strong: values.strongThreshold,
@@ -334,7 +354,7 @@ function buildCadence(values: ItemFormValues) {
 
 export function buildInitialValuesFromItem(
   item?: AkiItem | null,
-  prefs?: Pick<UserPreferences, "primaryThresholdDefault" | "strongThresholdDefault">
+  prefs?: Pick<UserPreferences, "primaryThresholdDefault" | "strongThresholdDefault" | "notifyChannel">
 ): ItemFormValues {
   if (!item) {
     return {
@@ -343,10 +363,11 @@ export function buildInitialValuesFromItem(
       icon: "",
       notes: "",
       cadenceDays: 7,
-      notifyWebPush: true,
-      notifyEmail: false,
+      notifyWebPush: prefs?.notifyChannel !== "email",
+      notifyEmail: prefs?.notifyChannel !== "webpush",
       primaryThreshold: prefs?.primaryThresholdDefault ?? 70,
       strongThreshold: prefs?.strongThresholdDefault ?? 85,
+      strongEnabled: false,
     };
   }
 
@@ -360,9 +381,22 @@ export function buildInitialValuesFromItem(
     notifyEmail: item.notifications.channels.email,
     primaryThreshold: item.notifications.thresholds.primary,
     strongThreshold: item.notifications.thresholds.strong,
+    strongEnabled: item.notifications.strongEnabled,
   };
 }
 
 function isSameCadence(a: number, b: number) {
   return Math.abs(a - b) < 0.001;
 }
+
+
+
+
+
+
+
+
+
+
+
+

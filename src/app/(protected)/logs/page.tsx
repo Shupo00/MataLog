@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -44,18 +44,18 @@ export default function LogsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-100">ログタイムライン</h1>
+          <h1 className="text-2xl font-semibold text-slate-100">ログ一覧</h1>
           <p className="text-sm text-slate-400">
-            対象ごとのログを一覧できます。フィルターで絞り込み、不要な記録は削除してください。
+            各対象の記録を時系列で確認できます。フィルターで対象を絞り込むこともできます。
           </p>
         </div>
         <Link
           href="/"
-          className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-400/70"
+          className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-emerald-400/70 hover:text-emerald-200"
         >
-          ダッシュボードに戻る
+          ホームに戻る
         </Link>
       </header>
 
@@ -75,15 +75,13 @@ export default function LogsPage() {
             ))}
           </select>
         </label>
-        <span className="text-xs text-slate-500">
-          {filteredLogs.length} 件のログ
-        </span>
+        <span className="text-xs text-slate-500">{filteredLogs.length} 件のログ</span>
       </div>
 
       <div className="space-y-6">
         {grouped.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-8 text-center text-sm text-slate-400">
-            条件に一致するログはありません。
+            まだログがありません。
           </div>
         ) : (
           grouped.map(([day, dayLogs]) => (
@@ -106,7 +104,7 @@ export default function LogsPage() {
                       <div className="mt-2 flex items-center gap-2 text-sm">
                         <span className="font-semibold text-slate-100">
                           {itemInfo?.icon ? itemInfo.icon + " " : ""}
-                          {itemInfo?.name ?? "不明な対象"}
+                          {itemInfo?.name ?? "対象不明"}
                         </span>
                         {typeof log.satisfaction === "number" ? (
                           <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300">

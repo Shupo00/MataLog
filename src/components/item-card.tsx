@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, type MouseEvent } from "react";
 import { useSession, useSupabaseClient } from "@supabase/auth-helpers-react";
 
 import { ScoreIndicator } from "@/components/score-indicator";
@@ -19,6 +20,7 @@ interface ItemCardProps {
 }
 
 export function ItemCard({ item, logs, precomputedRii }: ItemCardProps) {
+  const router = useRouter();
   const supabase = useSupabaseClient<Database>();
   const session = useSession();
   const addLog = useAkiStore((state) => state.addLog);
@@ -30,10 +32,10 @@ export function ItemCard({ item, logs, precomputedRii }: ItemCardProps) {
 
   const rii = precomputedRii ?? computeRii(item, logs);
   const lastLog = rii.lastLog;
-  const detailHref = "/items/" + item.id;
+  const detailHref = `/items/${item.id}`;
 
   const lastLogText = lastLog
-    ? formatRelative(lastLog.loggedAt) + " / " + formatDateTime(lastLog.loggedAt)
+    ? `${formatRelative(lastLog.loggedAt)} / ${formatDateTime(lastLog.loggedAt)}`
     : "未記録です";
 
   const submitQuickLog = async () => {
@@ -50,15 +52,24 @@ export function ItemCard({ item, logs, precomputedRii }: ItemCardProps) {
     setSatisfaction(80);
   };
 
+  const handleDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.closest("button, a, input, textarea")) return;
+    router.push(detailHref);
+  };
+
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-sm transition hover:border-emerald-400/70">
+    <div
+      className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-sm transition hover:border-emerald-400/70 cursor-pointer"
+      onDoubleClick={handleDoubleClick}
+    >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-1 items-center gap-4">
           <ScoreIndicator score={rii.score} size="md" />
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="text-lg font-semibold text-slate-100">
-                {item.icon ? item.icon + " " : ""}
+                {item.icon ? `${item.icon} ` : ""}
                 {item.name}
               </span>
               <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300">
@@ -93,6 +104,7 @@ export function ItemCard({ item, logs, precomputedRii }: ItemCardProps) {
           <Link
             href={detailHref}
             className="rounded-full border border-slate-700 px-4 py-2 text-center text-sm text-slate-200 transition hover:border-emerald-400/70"
+            onClick={(event) => event.stopPropagation()}
           >
             詳細を見る
           </Link>
@@ -141,3 +153,4 @@ export function ItemCard({ item, logs, precomputedRii }: ItemCardProps) {
     </div>
   );
 }
+

@@ -70,6 +70,10 @@ const defaultPreferences: UserPreferences = {
   strongThresholdDefault: 85,
   notifyHourStart: 9,
   notifyHourEnd: 21,
+  notifyChannel: "both",
+  dndStart: null,
+  dndEnd: null,
+  weeklyDigestWeekday: null,
 };
 
 const initialState: AkiState = {
@@ -103,7 +107,7 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
           .from("logs")
           .select("*")
           .eq("user_id", userId)
-          .order("logged_at", { ascending: false })
+          .order("at", { ascending: false })
           .limit(500),
         supa
           .from("preferences")
@@ -136,10 +140,15 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
       const preferences = prefsRow
         ? {
             ...defaultPreferences,
+            timezone: prefsRow.timezone ?? defaultPreferences.timezone,
             primaryThresholdDefault: prefsRow.primary_threshold_default,
             strongThresholdDefault: prefsRow.strong_threshold_default,
             notifyHourStart: prefsRow.notify_hour_start,
             notifyHourEnd: prefsRow.notify_hour_end,
+            notifyChannel: prefsRow.notify_channel ?? defaultPreferences.notifyChannel,
+            dndStart: prefsRow.dnd_start,
+            dndEnd: prefsRow.dnd_end,
+            weeklyDigestWeekday: prefsRow.weekly_digest_weekday,
           }
         : defaultPreferences;
 
@@ -159,28 +168,29 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
 
     const icon = normalizeInsertableString(payload.icon);
     const notes = normalizeInsertableString(payload.notes);
-    const cadenceDays = normalizeCadenceDays(payload.cadence.days);
+    const desiredCadenceDays = normalizeCadenceDays(payload.cadence.days);
+    const primaryThreshold =
+      payload.notifications?.thresholds?.primary ??
+      preferences.primaryThresholdDefault;
+    const strongThreshold =
+      payload.notifications?.thresholds?.strong ??
+      preferences.strongThresholdDefault;
+    const storedCadenceDays = normalizeCadenceDays(
+      desiredToStoredCadence(desiredCadenceDays, primaryThreshold)
+    );
 
     const insertPayload: Database["public"]["Tables"]["items"]["Insert"] = {
       user_id: userId,
       name: payload.name,
       category: payload.category,
       icon,
-      cadence_mode: "fixed",
-      tau_days: null,
-      fixed_days: cadenceDays,
-      window_center_days: null,
-      window_width_days: null,
+      cadence_days: storedCadenceDays,
       notifications_enabled: payload.notifications?.enabled ?? true,
-      notify_web_push: payload.notifications?.channels?.webPush ?? true,
-      notify_email: payload.notifications?.channels?.email ?? false,
-      threshold_primary:
-        payload.notifications?.thresholds?.primary ??
-        preferences.primaryThresholdDefault,
-      threshold_strong:
-        payload.notifications?.thresholds?.strong ??
-        preferences.strongThresholdDefault,
-      snooze: "none",
+      notify_web_push: payload.notifications?.channels?.webPush ?? preferences.notifyChannel !== "email",
+      notify_email: payload.notifications?.channels?.email ?? (preferences.notifyChannel !== "webpush"),
+      notify_strong: payload.notifications?.strongEnabled ?? false,
+      threshold_primary: primaryThreshold,
+      threshold_strong: strongThreshold,
       notes,
     };
 
@@ -212,8 +222,14 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
         )
       : existing.notifications;
 
-    const cadenceDays = normalizeCadenceDays(
+    const desiredCadenceDays = normalizeCadenceDays(
       payload.cadence?.days ?? existing.cadence.days
+    );
+    const storedCadenceDays = normalizeCadenceDays(
+      desiredToStoredCadence(
+        desiredCadenceDays,
+        notificationSettings.thresholds.primary
+      )
     );
 
     const icon =
@@ -230,17 +246,13 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
       category: payload.category ?? existing.category,
       icon,
       notes,
-      cadence_mode: "fixed",
-      tau_days: null,
-      fixed_days: cadenceDays,
-      window_center_days: null,
-      window_width_days: null,
+      cadence_days: storedCadenceDays,
       notifications_enabled: notificationSettings.enabled,
       notify_web_push: notificationSettings.channels.webPush,
       notify_email: notificationSettings.channels.email,
+      notify_strong: notificationSettings.strongEnabled,
       threshold_primary: notificationSettings.thresholds.primary,
       threshold_strong: notificationSettings.thresholds.strong,
-      snooze: "none",
     };
 
     const { data, error } = await supa
@@ -262,6 +274,8 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
     set((state) => ({
       items: state.items.map((item) => (item.id === id ? updatedItem : item)),
     }));
+
+    await invokeRecalcNextFire(client, id);
   },
   async deleteItem(client, id) {
     const supa = cast(client);
@@ -285,7 +299,7 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
     const insertPayload: Database["public"]["Tables"]["logs"]["Insert"] = {
       user_id: userId,
       item_id: payload.itemId,
-      logged_at: timestamp,
+      at: timestamp,
       satisfaction:
         typeof payload.satisfaction === "number" ? payload.satisfaction : null,
       note: normalizeInsertableString(payload.note),
@@ -316,9 +330,12 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
 
       return { logs, items };
     });
+
+    await invokeRecalcNextFire(client, payload.itemId);
   },
   async deleteLog(client, logId) {
     const supa = cast(client);
+    const targetLog = get().logs.find((log) => log.id === logId);
     const { error } = await supa.from("logs").delete().eq("id", logId);
 
     if (error) {
@@ -327,19 +344,36 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
     }
 
     set((state) => ({ logs: state.logs.filter((log) => log.id !== logId) }));
+
+    if (targetLog) {
+      await invokeRecalcNextFire(client, targetLog.itemId);
+    }
   },
   async updatePreferencesRemote(client, userId, prefs) {
     const supa = cast(client);
+    const currentPrefs = get().preferences;
     const payload: Database["public"]["Tables"]["preferences"]["Insert"] = {
       user_id: userId,
       primary_threshold_default:
-        prefs.primaryThresholdDefault ?? get().preferences.primaryThresholdDefault,
+        prefs.primaryThresholdDefault ?? currentPrefs.primaryThresholdDefault,
       strong_threshold_default:
-        prefs.strongThresholdDefault ?? get().preferences.strongThresholdDefault,
-      notify_hour_start:
-        prefs.notifyHourStart ?? get().preferences.notifyHourStart,
-      notify_hour_end:
-        prefs.notifyHourEnd ?? get().preferences.notifyHourEnd,
+        prefs.strongThresholdDefault ?? currentPrefs.strongThresholdDefault,
+      notify_hour_start: prefs.notifyHourStart ?? currentPrefs.notifyHourStart,
+      notify_hour_end: prefs.notifyHourEnd ?? currentPrefs.notifyHourEnd,
+      timezone: prefs.timezone ?? currentPrefs.timezone,
+      notify_channel: prefs.notifyChannel ?? currentPrefs.notifyChannel,
+      dnd_start:
+        Object.prototype.hasOwnProperty.call(prefs, "dndStart")
+          ? prefs.dndStart ?? null
+          : currentPrefs.dndStart,
+      dnd_end:
+        Object.prototype.hasOwnProperty.call(prefs, "dndEnd")
+          ? prefs.dndEnd ?? null
+          : currentPrefs.dndEnd,
+      weekly_digest_weekday:
+        Object.prototype.hasOwnProperty.call(prefs, "weeklyDigestWeekday")
+          ? prefs.weeklyDigestWeekday ?? null
+          : currentPrefs.weeklyDigestWeekday,
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -375,21 +409,25 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
 }));
 
 function mapDbItemToAkiItem(row: Database["public"]["Tables"]["items"]["Row"]): AkiItem {
-  const cadenceDays = normalizeCadenceDays(
-    row.fixed_days ?? row.tau_days ?? row.window_center_days ?? undefined
-  );
-
   const notifications: NotificationSettings = {
     enabled: row.notifications_enabled,
     channels: {
       webPush: row.notify_web_push,
       email: row.notify_email,
     },
+    strongEnabled: row.notify_strong,
     thresholds: {
       primary: row.threshold_primary,
       strong: row.threshold_strong,
     },
   };
+
+  const storedCadenceDays = normalizeCadenceDays(row.cadence_days);
+  const desiredCadenceDays = storedToDesiredCadence(
+    storedCadenceDays,
+    notifications.thresholds.primary
+  );
+  const cadenceDays = roundCadenceForDisplay(desiredCadenceDays);
 
   return {
     id: row.id,
@@ -408,7 +446,7 @@ function mapDbLogToAkiLog(row: Database["public"]["Tables"]["logs"]["Row"]): Aki
   return {
     id: row.id,
     itemId: row.item_id,
-    loggedAt: row.logged_at,
+    loggedAt: row.at,
     satisfaction: row.satisfaction ?? undefined,
     note: row.note ?? undefined,
   };
@@ -422,6 +460,7 @@ function mergeNotificationSettings(
   const base: NotificationSettings = current ?? {
     enabled: true,
     channels: { webPush: true, email: false },
+    strongEnabled: false,
     thresholds: {
       primary: prefs.primaryThresholdDefault,
       strong: prefs.strongThresholdDefault,
@@ -436,11 +475,21 @@ function mergeNotificationSettings(
       webPush: overrides.channels?.webPush ?? base.channels.webPush,
       email: overrides.channels?.email ?? base.channels.email,
     },
+    strongEnabled: overrides.strongEnabled ?? base.strongEnabled,
     thresholds: {
       primary: overrides.thresholds?.primary ?? base.thresholds.primary,
       strong: overrides.thresholds?.strong ?? base.thresholds.strong,
     },
   };
+}
+
+async function invokeRecalcNextFire(client: Supabase, itemId: string) {
+  try {
+    await cast(client)
+      .functions.invoke("recalc_next_fire", { body: { itemId } });
+  } catch (error) {
+    console.error("Failed to invoke recalc_next_fire", error);
+  }
 }
 
 function normalizeInsertableString(value?: string | null) {
@@ -455,6 +504,52 @@ function normalizeCadenceDays(value?: number | null, fallback = 7) {
   }
   return fallback;
 }
+
+
+
+const MIN_THRESHOLD = 1;
+const MAX_THRESHOLD = 99;
+
+function clampThreshold(value: number): number {
+  if (!Number.isFinite(value)) return 70;
+  return Math.min(MAX_THRESHOLD, Math.max(MIN_THRESHOLD, value));
+}
+
+function decayFactor(threshold: number): number {
+  const clamped = clampThreshold(threshold) / 100;
+  const lambda = -Math.log(1 - clamped);
+  return Number.isFinite(lambda) && lambda > 0 ? lambda : 1;
+}
+
+const DISPLAY_CADENCE_DECIMALS = 1;
+const STORED_CADENCE_DECIMALS = 6;
+
+function desiredToStoredCadence(desiredDays: number, threshold: number): number {
+  const raw = desiredDays / decayFactor(threshold);
+  const safe = Math.max(0.01, raw);
+  return roundTo(safe, STORED_CADENCE_DECIMALS);
+}
+
+function storedToDesiredCadence(storedDays: number, threshold: number): number {
+  const raw = storedDays * decayFactor(threshold);
+  return Math.max(0.01, raw);
+}
+
+function roundCadenceForDisplay(value: number): number {
+  return Math.max(0.01, roundTo(value, DISPLAY_CADENCE_DECIMALS));
+}
+
+function roundTo(value: number, decimals: number): number {
+  if (!Number.isFinite(value)) return 0;
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
+
+
+
+
+
 
 
 

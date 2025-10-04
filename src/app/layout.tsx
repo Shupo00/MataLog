@@ -16,9 +16,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "飽きログ | AkiLog",
-  description:
-    "時間ベースで再燃タイミングを可視化し、行動に最適な間隔を提案するライフログダッシュボード",
+  title: "またログ | Matalog",
+  description: "欲望のタイミングを設計する再訪ログアプリです。",
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.png", type: "image/png" },
+    ],
+  },
 };
 
 export default async function RootLayout({

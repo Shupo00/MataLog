@@ -1,142 +1,4 @@
-﻿# プロダクト概要
-
-* **名称**: 飽きログ（AkiLog）
-* **タグライン**: 「飽きを設計し、楽しさを最大化する」
-* **一言ピッチ**: 「◯◯をしてからどれだけ時間が経ったか」を見える化し、最適な“再会タイミング”で通知する、時間ベースの快楽コンディション可視化アプリ。
-* **背景仮説**: 人は同じ行為を短期間で繰り返すと満足度が下がる（限界効用逓減）。適切な間隔を空けることで“再燃”しやすい。
-
----
-
-## コア体験（Core Loop）
-
-1. ユーザーが「対象（アイテム）」を登録（例: スイーツ、カフェ、趣味、ゲーム、アーティスト、外食チェーンなど）
-2. 実行したらワンタップで「やった」ログを記録（日時＋オプションで満足度）
-3. 経過時間から**飽きスコア（Re-Ignition Index = RII）**を算出
-4. スコアがしきい値を越えたら通知 → 次の実行を促し、またログへ戻る
-
----
-
-## Akiスコア（再燃度）設計
-
-**目的**: 「今、もう一度やると楽しいか？」を 0〜100 で直感的に示す。
-
-### ユーザー選択のスコア上昇頻度（Cadence）
-
-* 各アイテムごとに、スコアが立ち上がる**時間スケール**をユーザーが選択できる。
-* **モード**
-
-  1. **Adaptive（推奨）**: 最適間隔 `τ`（カテゴリ or 学習）を使って指数型で増加（従来の式）。
-  2. **Fixed Cadence**: ユーザーが「1日 / 1週間 / 1ヶ月」など**固定間隔 `C`**を選ぶ。Akiスコアは `C` に合わせて上昇。
-
-     * 式は指数型を保ちつつ `τ' = C` とみなす（単調増加・逆算可能）。
-     * **通知**は `t* = − C × ln(1 − T/100)` で時刻を逆算（T=70/85 など）。
-  3. **Target Window**: 「○日±幅」で“最もおいしい窓”を設定。ウィンドウ内でスコアを高止まりに（通知は窓入りで1回）。
-
-### 基本式
-
-* 経過時間: `t`（最後の実行からの経過時間）
-* 時間スケール: `σ`（Adaptive: `τ'` / Fixed: `C` ）
-* 直近の満足度: `s`（0〜1）
-* 新奇性補正: `n`（0.8〜1.2）
-
-**指数型（推奨）**
-
-* `RII = round( 100 * ( 1 - e^{- t / σ} ) * n )`
-* `σ` はモードに応じて決定（Adaptive では満足度補正で伸縮: `τ' = τ * (1 + α s)`）。
-
-**しきい値の逆算（通知）**
-
-* `t* = - σ * ln(1 - T/100)`
-* 例: `C = 7日, T=70 → t* ≈ 8.43日` / `T=85 → 13.28日`
-
-**連続消費の抑制（密度補正）**
-
-* 直近 `m` 回が近接している場合、`n` を下げる（例: `n = max(0.8, 1 - 0.2 * 密度)`）。
-
----
-
-## 主要機能（MVP）
-
-* 対象の登録/編集（名前、カテゴリ、アイコン、**最適間隔 τ or ユーザー選択の頻度（Cadence）**、通知オン/オフ、メモ）
-* ワンタップ記録（「やった！」ボタン）＋任意の満足度スライダー（0〜100）
-* タイムライン（いつ何をやったか）
-* 統計ダッシュボード
-
-  * 今日/週/月の実行数
-  * 対象別ヒートマップ
-  * Akiスコア推移
-* 通知
-
-  * スコアがしきい値を跨いだ時
-  * 週次リマインド（まとめ/見逃し）
-* 色と数字でコンディション表示（0〜100、緑系=高再燃・赤系=低再燃）
-
----
-
-## UI/UX ラフ（画面案）
-
-1. **ホーム（カードリスト）**
-
-   * 各対象カード: 名前 / 最終実行からの経過時間 / Akiスコア（数値＋色リング）/ ワンタップ実行ボタン
-   * 並び替え: 「スコア降順」「経過時間」「最近実行」
-   * **頻度チップ**: `Adaptive` / `1日` / `1週間` / `1ヶ月` / `カスタム` をバッジ表示
-2. **対象詳細**
-
-   * Akiスコア・経過時間・時間スケール（σ）
-   * **Cadenceセクション**
-
-     * モード選択：Adaptive / Fixed / Window
-     * Fixed: 「1日 / 3日 / 1週間 / 2週間 / 1ヶ月」プリセット＋カスタム（日数入力）
-     * Window: 「中心○日 ± 幅○日」
-     * しきい値（70/85）と通知ON/OFF、**スヌーズ**（1日/1週/1ヶ月）
-   * 過去ログ（満足度メモ付き）
-   * スコア推移グラフ（σ切替を反映）
-3. **ログ画面**
-
-   * 日付別に実行履歴を縦並び表示
-4. **統計**
-
-   * カテゴリ別回数 / 直近30日のヒートマップ / しきい値超え予測
-   * **Cadence vs 実行実績のズレ**（目標に対して早すぎ/遅すぎ可視化）
-5. **設定**
-
-   * しきい値、通知時間帯、静穏（Do Not Disturb）
-
-**色設計（例）**
-
-* 0–39: #FCA5A5（淡赤）
-* 40–69: #FCD34D（黄）
-* 70–84: #86EFAC（淡緑）*通知候補*
-* 85–100: #34D399（濃緑）*強通知*
-
----
-
-## データモデル（Supabase/Postgres 推奨）
-
-**users**
-
-* id (uuid, pk)
-* email, display_name, created_at
-
-**items**（対象）
-
-* id (uuid, pk)
-* user_id (fk → users)
-* name (text)
-* category (text)
-* tau_days (numeric) …最適間隔 τ（Adaptive用）
-* cadence_mode (text) check in ('adaptive','fixed','window') default 'adaptive'
-* cadence_days (numeric, nullable) …Fixed用 `C`
-* window_center_days (numeric, nullable) / window_width_days (numeric, nullable) …Window用
-* notify_enabled (bool)
-* threshold_primary (int, default 70)
-* threshold_strong (int, default 85)
-* next_fire_at_primary (timestamptz, nullable)
-* next_fire_at_strong (timestamptz, nullable)
-* color (text, optional)
-* created_at, updated_at
-
-**logs**（実行ログ）
+﻿**items**（対象）\n\n* id (uuid, pk)\n* user_id (fk → users)\n* name (text)\n* category (text)\n* tau_days (numeric) …最適間隔 τ（Adaptive 用）\n* cadence_mode (text) check in ('adaptive','fixed') default 'adaptive'\n* cadence_days (numeric, nullable) …Fixed 用 C\n* notifications_enabled (bool)\n* notify_web_push (bool default true)\n* notify_email (bool default false)\n* notify_strong (bool default false)\n* threshold_primary (int, default 70)\n* threshold_strong (int, default 85)\n* next_fire_at_primary (timestamptz, nullable)\n* next_fire_at_strong (timestamptz, nullable)\n* created_at, updated_at\n\n**logs**（実行ログ）
 
 * id (uuid, pk)
 * item_id (fk → items)
@@ -190,13 +52,11 @@
 function sigma(item, last_log):
   if item.cadence_mode == 'fixed':
     return hours(item.cadence_days)
-  if item.cadence_mode == 'window':
-    return hours(item.window_center_days)
   // adaptive
   s = last_log?.satisfaction ? last_log.satisfaction/100 : 0.5
   return hours(item.tau_days) * (1 + 0.4 * s)
 
-function computeRII(item, now):
+function computeScore(item, now):
   last = latest(logs where item_id=item.id)
   if !last: return 100  // 未体験は“試したい”
   t = hours_between(now, last.at)
@@ -207,8 +67,8 @@ function computeRII(item, now):
   novelty = max(0.8, 1 - 0.2 * density)
 
   base = 1 - exp(- t / sig)
-  rii = round(100 * base * novelty)
-  return clamp(rii, 0, 100)
+  score = round(100 * base * novelty)
+  return clamp(score, 0, 100)
 
 function nextFireAt(item, last, threshold):
   sig = sigma(item, last)
@@ -220,7 +80,7 @@ function nextFireAt(item, last, threshold):
 **通知判定**
 
 ```pseudo
-if prevRII < THRESHOLD <= currRII:
+if prevScore < THRESHOLD <= currScore:
   fire_notification(level)
 
 // ログ追加時 or Cadence変更時
@@ -243,17 +103,17 @@ item.next_fire_at_strong  = nextFireAt(item, last, item.threshold_strong)
 ## API スケッチ（RLS前提、Edge Functions）
 
 * `POST /items` {name, category, tau_days, thresholds}
-* `GET /items` → item list + computed RII（ビュー or RPC）
+* `GET /items` → item list + computed またスコア（ビュー or RPC）
 * `POST /logs` {item_id, at?, satisfaction?, note?}
-* `GET /items/:id/rii` → 現在のRIIと次回予測
-* `POST /notify/evaluate` → 全アイテムのRII再計算・通知
+* `GET /items/:id/score` → 現在のまたスコアと次回予測
+* `POST /notify/evaluate` → 全アイテムのまたスコア再計算・通知
 
 **DB ビュー例**
 
 ```sql
-create view item_current_rii as
+create view item_current_score as
 select i.id as item_id,
-       compute_rii(i.id, now()) as rii
+       compute_score(i.id, now()) as またスコア
 from items i;
 ```
 
@@ -287,7 +147,7 @@ from items i;
 
 ## ネーミング & コピー候補
 
-* 飽きログ / AkiLog / ReIgnite
+* またろぐ / またろぐ / ReIgnite
 * コピー: 「ケーキは“待つほど”おいしい」/「欲望にも休息を」/「また会う日の設計図」
 
 ---
@@ -323,7 +183,7 @@ from items i;
 * **人間関係（会う・通話）**: 1週間 / 2週間 / 1ヶ月
 * **買い物/課金**: 2週間 / 1ヶ月 / 3ヶ月
 
-※ いずれも**Adaptive**を選ぶと `τ` を起点に自動スケール。Fixedは上記から選択、Windowは中心値にこれらを当てて±幅（例：±2日/±1週）。
+※ いずれも**Adaptive**を選ぶと `τ` を起点に自動スケール。Fixedは上記から選択。
 
 ### UI提案
 
@@ -350,7 +210,7 @@ from items i;
 
    * ログ作成後に `recalc_next_fire` を呼ぶ
    * アイテム編集で cadence/threshold 変更時も同様
-   * ホーム/詳細で RII をオンデマンド計算表示
+   * ホーム/詳細で またスコア をオンデマンド計算表示
 6. **通知チャネル**（Web Push/Email）設定
 7. **E2E動作確認** & 計測（通知→実行率）
 
@@ -361,11 +221,8 @@ from items i;
 ```sql
 -- items へ cadence/next_fire フィールド
 alter table items
-  add column if not exists cadence_mode text not null default 'adaptive' check (cadence_mode in ('adaptive','fixed','window')),
-  add column if not exists cadence_days numeric,
-  add column if not exists window_center_days numeric,
-  add column if not exists window_width_days numeric,
-  add column if not exists tau_days numeric default 3,
+  add column if not exists cadence_mode text not null default 'adaptive' check (cadence_mode in ('adaptive','fixed')),
+  add column if not exists cadence_days numeric,    add column if not exists tau_days numeric default 3,
   add column if not exists next_fire_at_primary timestamptz,
   add column if not exists next_fire_at_strong timestamptz;
 
@@ -404,9 +261,7 @@ $$;
   1. `last_at = (select at from logs where item_id = $1 order by at desc limit 1)`
   2. `sigma_hours` を決定：
 
-     * `fixed`: `cadence_days * 24`
-     * `window`: `window_center_days * 24`
-     * `adaptive`: `tau_days * (1 + 0.4 * s_last)` * 24
+     * `fixed`: `cadence_days * 24`     * `adaptive`: `tau_days * (1 + 0.4 * s_last)` * 24
 
        * `s_last` は直近ログの `coalesce(satisfaction, 50)/100`
   3. `next_fire_at_primary = compute_next_fire(last_at, sigma_hours, threshold_primary)`
@@ -437,7 +292,6 @@ serve(async (req) => {
     const s = (last.satisfaction ?? 50) / 100;
     let sigmaDays: number;
     if (item.cadence_mode === 'fixed') sigmaDays = item.cadence_days;
-    else if (item.cadence_mode === 'window') sigmaDays = item.window_center_days;
     else sigmaDays = item.tau_days * (1 + 0.4 * s);
 
     const sigmaHours = sigmaDays * 24;
@@ -490,7 +344,7 @@ if (channel === 'webpush' || channel === 'both') {
 }
 
 if (channel === 'email' || channel === 'both') {
-  const ok = await sendEmail(user.email, subject(it), body(it, rii)).catch(() => false);
+  const ok = await sendEmail(user.email, subject(it), body(it, またスコア)).catch(() => false);
   logNotification(it.id, 'email', ok);
 }
 ```
@@ -506,7 +360,7 @@ if (channel === 'email' || channel === 'both') {
 
 * プロバイダ例: Resend / SendGrid / Postmark / SMTP
 * 環境変数: `RESEND_API_KEY` など
-* テンプレ: 件名「『{{item}}』がベストタイミングです（{{rii}}）」
+* テンプレ: 件名「『{{item}}』がベストタイミングです（{{またスコア}}）」
 
 ---
 
@@ -514,11 +368,11 @@ if (channel === 'email' || channel === 'both') {
 
 * **ログ作成** `POST /logs` → 成功後 `POST /functions/v1/recalc_next_fire { item_id }`
 * **アイテム編集**（cadence/threshold 変更）→ 同上
-* **RII表示**: フロントでオンデマンド計算
+* **またスコア表示**: フロントでオンデマンド計算
 
   * `t = now - last_at`（秒→時間）
   * `σ` は上記と同じ規則でUI側でも導出
-  * `RII = 100 * (1 - exp(-t/σ))`（MVPは `n=1` でOK）
+  * `またスコア = 100 * (1 - exp(-t/σ))`（MVPは `n=1` でOK）
 * **Web Push登録フロー**
 
   1. 初回起動で通知許可をリクエスト
@@ -553,7 +407,7 @@ if (channel === 'email' || channel === 'both') {
 
 ## 通知テンプレ（コピー）
 
-> 変数: `{{user}}`, `{{item}}`, `{{rii}}`, `{{elapsed}}`（例: 9日）, `{{deeplink}}`, `{{level}}`（primary/strong）
+> 変数: `{{user}}`, `{{item}}`, `{{またスコア}}`, `{{elapsed}}`（例: 9日）, `{{deeplink}}`, `{{level}}`（primary/strong）
 > 目安: Web Push は **title ≤ 30文字 / body ≤ 90文字** を推奨
 
 ### A) ミニマル（既定）
@@ -561,13 +415,13 @@ if (channel === 'email' || channel === 'both') {
 **Web Push**
 
 * title: 今がベスト『{{item}}』
-* body: 最後から{{elapsed}}。スコア{{rii}}。良いタイミングです。
+* body: 最後から{{elapsed}}。スコア{{またスコア}}。良いタイミングです。
 
 **Email**
 
-* subject: 『{{item}}』のベストタイミング（{{rii}}）
+* subject: 『{{item}}』のベストタイミング（{{またスコア}}）
 * body:
-  こんにちは、{{user}} さん。最後に {{item}} を楽しんでから {{elapsed}} 経ち、スコアが {{rii}} に達しました。よければ今日もう一度どうぞ。
+  こんにちは、{{user}} さん。最後に {{item}} を楽しんでから {{elapsed}} 経ち、スコアが {{またスコア}} に達しました。よければ今日もう一度どうぞ。
   アプリを開く → {{deeplink}}
 
 ---
@@ -577,13 +431,13 @@ if (channel === 'email' || channel === 'both') {
 **Web Push**
 
 * title: 逃すと薄まるかも『{{item}}』
-* body: スコア{{rii}}（高）。今がピーク帯。良い再会を。
+* body: スコア{{またスコア}}（高）。今がピーク帯。良い再会を。
 
 **Email**
 
-* subject: ピーク帯です：『{{item}}』（{{rii}}）
+* subject: ピーク帯です：『{{item}}』（{{またスコア}}）
 * body:
-  今がピーク帯です（{{rii}}）。最後から{{elapsed}}。満足しやすいタイミングを逃さずもう一度。→ {{deeplink}}
+  今がピーク帯です（{{またスコア}}）。最後から{{elapsed}}。満足しやすいタイミングを逃さずもう一度。→ {{deeplink}}
 
 ---
 
@@ -592,12 +446,12 @@ if (channel === 'email' || channel === 'both') {
 **Web Push（朝）**
 
 * title: 朝の一杯に『{{item}}』
-* body: {{elapsed}}ぶり、スコア{{rii}}。今日のスタートにどう？
+* body: {{elapsed}}ぶり、スコア{{またスコア}}。今日のスタートにどう？
 
 **Web Push（夜）**
 
 * title: 今日の締めに『{{item}}』
-* body: スコア{{rii}}。軽く楽しんで、よく眠ろう。
+* body: スコア{{またスコア}}。軽く楽しんで、よく眠ろう。
 
 ---
 
@@ -606,13 +460,13 @@ if (channel === 'email' || channel === 'both') {
 **Web Push**
 
 * title: It’s the sweet spot — {{item}}
-* body: {{elapsed}} since last time. Score {{rii}}. Now’s a great moment.
+* body: {{elapsed}} since last time. Score {{またスコア}}. Now’s a great moment.
 
 **Email**
 
-* subject: Best timing for {{item}} ({{rii}})
+* subject: Best timing for {{item}} ({{またスコア}})
 * body:
-  Hi {{user}}, it’s been {{elapsed}} since {{item}}. Your score is {{rii}} — a great moment to revisit. Open the app → {{deeplink}}
+  Hi {{user}}, it’s been {{elapsed}} since {{item}}. Your score is {{またスコア}} — a great moment to revisit. Open the app → {{deeplink}}
 
 ---
 
@@ -621,3 +475,14 @@ if (channel === 'email' || channel === 'both') {
 * `{{deeplink}}` は PWAの `/items/{{id}}` などを想定（Universal Link化できればベター）
 * Strong/Primary でタイトルだけ差し替えも可（強度バリエーション維持）
 * 通知文言は最大全角90文字前後/英語140字以内で折り返し崩れを防止
+
+
+
+
+
+
+
+
+
+
+

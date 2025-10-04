@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -47,18 +47,16 @@ export interface Database {
           name: string;
           category: string;
           icon: string | null;
-          cadence_mode: "adaptive" | "fixed" | "window";
-          tau_days: number | null;
-          fixed_days: number | null;
-          window_center_days: number | null;
-          window_width_days: number | null;
+          cadence_days: number;
           notifications_enabled: boolean;
           notify_web_push: boolean;
           notify_email: boolean;
+          notify_strong: boolean;
           threshold_primary: number;
           threshold_strong: number;
-          snooze: "none" | "day" | "week" | "month";
           notes: string | null;
+          next_fire_at_primary: string | null;
+          next_fire_at_strong: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -68,18 +66,16 @@ export interface Database {
           name: string;
           category?: string;
           icon?: string | null;
-          cadence_mode?: "adaptive" | "fixed" | "window";
-          tau_days?: number | null;
-          fixed_days?: number | null;
-          window_center_days?: number | null;
-          window_width_days?: number | null;
+          cadence_days?: number;
           notifications_enabled?: boolean;
           notify_web_push?: boolean;
           notify_email?: boolean;
+          notify_strong?: boolean;
           threshold_primary?: number;
           threshold_strong?: number;
-          snooze?: "none" | "day" | "week" | "month";
           notes?: string | null;
+          next_fire_at_primary?: string | null;
+          next_fire_at_strong?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -89,18 +85,16 @@ export interface Database {
           name?: string;
           category?: string;
           icon?: string | null;
-          cadence_mode?: "adaptive" | "fixed" | "window";
-          tau_days?: number | null;
-          fixed_days?: number | null;
-          window_center_days?: number | null;
-          window_width_days?: number | null;
+          cadence_days?: number;
           notifications_enabled?: boolean;
           notify_web_push?: boolean;
           notify_email?: boolean;
+          notify_strong?: boolean;
           threshold_primary?: number;
           threshold_strong?: number;
-          snooze?: "none" | "day" | "week" | "month";
           notes?: string | null;
+          next_fire_at_primary?: string | null;
+          next_fire_at_strong?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -118,7 +112,7 @@ export interface Database {
           id: string;
           user_id: string;
           item_id: string;
-          logged_at: string;
+          at: string;
           satisfaction: number | null;
           note: string | null;
           created_at: string;
@@ -127,7 +121,7 @@ export interface Database {
           id?: string;
           user_id: string;
           item_id: string;
-          logged_at?: string;
+          at?: string;
           satisfaction?: number | null;
           note?: string | null;
           created_at?: string;
@@ -136,7 +130,7 @@ export interface Database {
           id?: string;
           user_id?: string;
           item_id?: string;
-          logged_at?: string;
+          at?: string;
           satisfaction?: number | null;
           note?: string | null;
           created_at?: string;
@@ -163,6 +157,11 @@ export interface Database {
           strong_threshold_default: number;
           notify_hour_start: number;
           notify_hour_end: number;
+          dnd_start: string | null;
+          dnd_end: string | null;
+          weekly_digest_weekday: number | null;
+          timezone: string;
+          notify_channel: "webpush" | "email" | "both";
           created_at: string;
           updated_at: string;
         };
@@ -172,6 +171,11 @@ export interface Database {
           strong_threshold_default?: number;
           notify_hour_start?: number;
           notify_hour_end?: number;
+          dnd_start?: string | null;
+          dnd_end?: string | null;
+          weekly_digest_weekday?: number | null;
+          timezone?: string;
+          notify_channel?: "webpush" | "email" | "both";
           created_at?: string;
           updated_at?: string;
         };
@@ -181,9 +185,15 @@ export interface Database {
           strong_threshold_default?: number;
           notify_hour_start?: number;
           notify_hour_end?: number;
+          dnd_start?: string | null;
+          dnd_end?: string | null;
+          weekly_digest_weekday?: number | null;
+          timezone?: string;
+          notify_channel?: "webpush" | "email" | "both";
           created_at?: string;
           updated_at?: string;
         };
+
         Relationships: [
           {
             foreignKeyName: "preferences_user_id_fkey";
@@ -202,6 +212,7 @@ export interface Database {
           level: "primary" | "strong";
           score: number | null;
           send_at: string;
+          delivered: boolean;
           delivered_at: string | null;
           payload: Json | null;
           created_at: string;
@@ -214,6 +225,7 @@ export interface Database {
           level: "primary" | "strong";
           score?: number | null;
           send_at: string;
+          delivered?: boolean;
           delivered_at?: string | null;
           payload?: Json | null;
           created_at?: string;
@@ -226,6 +238,7 @@ export interface Database {
           level?: "primary" | "strong";
           score?: number | null;
           send_at?: string;
+          delivered?: boolean;
           delivered_at?: string | null;
           payload?: Json | null;
           created_at?: string;
@@ -252,8 +265,10 @@ export interface Database {
           endpoint: string;
           p256dh: string;
           auth: string;
+          user_agent: string | null;
           created_at: string;
-          last_used_at: string | null;
+          last_success_at: string | null;
+          is_active: boolean;
         };
         Insert: {
           id?: string;
@@ -261,8 +276,10 @@ export interface Database {
           endpoint: string;
           p256dh: string;
           auth: string;
+          user_agent?: string | null;
           created_at?: string;
-          last_used_at?: string | null;
+          last_success_at?: string | null;
+          is_active?: boolean;
         };
         Update: {
           id?: string;
@@ -270,8 +287,10 @@ export interface Database {
           endpoint?: string;
           p256dh?: string;
           auth?: string;
+          user_agent?: string | null;
           created_at?: string;
-          last_used_at?: string | null;
+          last_success_at?: string | null;
+          is_active?: boolean;
         };
         Relationships: [
           {
@@ -289,3 +308,5 @@ export interface Database {
     CompositeTypes: Record<string, never>;
   };
 }
+
+

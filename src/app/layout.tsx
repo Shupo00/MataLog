@@ -20,8 +20,7 @@ export const metadata: Metadata = {
   description: "欲望のタイミングを設計する再訪ログアプリです。",
   icons: {
     icon: [
-      { url: "/icon.png", type: "image/png" },
-      { url: "/favicon.png", type: "image/png" },
+      { url: "matalog-favicon.png?v=20251004", type: "image/png" },
     ],
   },
 };

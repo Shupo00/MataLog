@@ -16,9 +16,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "またろぐ | Matalog",
-  description:
-    "時間ベースで再会タイミングを設計し、快楽コンディションを可視化する習慣ログアプリ。",
+  title: "またログ | Matalog",
+  description: "欲望のタイミングを設計する再訪ログアプリです。",
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.png", type: "image/png" },
+    ],
+  },
 };
 
 export default async function RootLayout({

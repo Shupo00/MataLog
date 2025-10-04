@@ -59,7 +59,7 @@ export default function StatsPage() {
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
         <h2 className="text-lg font-semibold text-slate-100">アイテム別スコア</h2>
-        <p className="text-sm text-slate-400">各対象の最新またスコアと最終ログ時刻です。</p>
+        <p className="text-sm text-slate-400">各対象の最新Mataスコアと最終ログ時刻です。</p>
         <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {itemScores.map(({ item, rii }) => (
             <div

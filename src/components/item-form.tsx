@@ -354,7 +354,7 @@ function buildCadence(values: ItemFormValues) {
 
 export function buildInitialValuesFromItem(
   item?: AkiItem | null,
-  prefs?: Pick<UserPreferences, "primaryThresholdDefault" | "strongThresholdDefault">
+  prefs?: Pick<UserPreferences, "primaryThresholdDefault" | "strongThresholdDefault" | "notifyChannel">
 ): ItemFormValues {
   if (!item) {
     return {
@@ -363,8 +363,8 @@ export function buildInitialValuesFromItem(
       icon: "",
       notes: "",
       cadenceDays: 7,
-      notifyWebPush: true,
-      notifyEmail: false,
+      notifyWebPush: prefs?.notifyChannel !== "email",
+      notifyEmail: prefs?.notifyChannel !== "webpush",
       primaryThreshold: prefs?.primaryThresholdDefault ?? 70,
       strongThreshold: prefs?.strongThresholdDefault ?? 85,
       strongEnabled: false,

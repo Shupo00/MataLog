@@ -25,7 +25,7 @@ export default function SettingsPage() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-100">設定</h1>
-          <p className="text-sm text-slate-400">通知しきい値など、AkiLog全体の基本設定を調整します。</p>
+          <p className="text-sm text-slate-400">通知しきい値など、またろぐ全体の基本設定を調整します。</p>
         </div>
         <Link
           href="/"

@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+﻿import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4";
 import webpush from "npm:web-push@3.5.0";
 
@@ -236,7 +236,8 @@ serve(async (req) => {
           message,
           metrics,
           deeplink,
-          event.level
+          event.level,
+          event.item.name
         );
 
         if (emailResult.attempted) {
@@ -496,22 +497,23 @@ async function sendEmailNotification(
   message: { title: string; body: string; elapsed: string },
   metrics: RiiMetrics,
   deeplink: string,
-  level: NotificationLevel
+  level: NotificationLevel,
+  itemName: string
 ): Promise<{ attempted: boolean; success: boolean; subject: string }> {
   if (!RESEND_API_KEY || !RESEND_FROM_EMAIL || !email) {
     return { attempted: false, success: false, subject: "" };
   }
 
-  const subjectPrefix = level === "strong" ? "Peak timing" : "Sweet spot";
-  const subject = `${subjectPrefix}: ${message.title} (${metrics.score})`;
-  const salutation = displayName ? `Hi ${displayName},` : "Hello,";
+  const subjectPrefix = level === "strong" ? "ピークタイミング" : "ベストタイミング";
+  const subject = `${subjectPrefix}：${itemName} (${metrics.score})`;
+  const salutation = displayName ? `${displayName} さんへ` : "こんにちは";
 
   const html = `
     <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #0f172a;">
       <p>${salutation}</p>
-      <p>${message.body}</p>
-      <p>It has been ${message.elapsed}. Current score: <strong>${metrics.score}</strong>.</p>
-      <p><a href="${deeplink}" style="color: #10b981; text-decoration: none; font-weight: 600;">Open Matalog</a></p>
+      <p>最後に「${itemName}」を楽しんでから ${message.elapsed} が経ちました。</p>
+      <p>現在のスコアは <strong>${metrics.score}</strong> です。今が良いタイミングかもしれません。</p>
+      <p><a href="${deeplink}" style="color: #10b981; text-decoration: none; font-weight: 600;">アプリを開く</a></p>
     </div>
   `;
 
@@ -589,6 +591,10 @@ function corsHeaders(requestHeaders: Headers) {
     "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
   };
 }
+
+
+
+
 
 
 

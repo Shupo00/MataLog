@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { create } from "zustand";
@@ -168,24 +168,29 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
 
     const icon = normalizeInsertableString(payload.icon);
     const notes = normalizeInsertableString(payload.notes);
-    const cadenceDays = normalizeCadenceDays(payload.cadence.days);
+    const desiredCadenceDays = normalizeCadenceDays(payload.cadence.days);
+    const primaryThreshold =
+      payload.notifications?.thresholds?.primary ??
+      preferences.primaryThresholdDefault;
+    const strongThreshold =
+      payload.notifications?.thresholds?.strong ??
+      preferences.strongThresholdDefault;
+    const storedCadenceDays = normalizeCadenceDays(
+      desiredToStoredCadence(desiredCadenceDays, primaryThreshold)
+    );
 
     const insertPayload: Database["public"]["Tables"]["items"]["Insert"] = {
       user_id: userId,
       name: payload.name,
       category: payload.category,
       icon,
-      cadence_days: cadenceDays,
+      cadence_days: storedCadenceDays,
       notifications_enabled: payload.notifications?.enabled ?? true,
-      notify_web_push: payload.notifications?.channels?.webPush ?? true,
-      notify_email: payload.notifications?.channels?.email ?? false,
+      notify_web_push: payload.notifications?.channels?.webPush ?? preferences.notifyChannel !== "email",
+      notify_email: payload.notifications?.channels?.email ?? (preferences.notifyChannel !== "webpush"),
       notify_strong: payload.notifications?.strongEnabled ?? false,
-      threshold_primary:
-        payload.notifications?.thresholds?.primary ??
-        preferences.primaryThresholdDefault,
-      threshold_strong:
-        payload.notifications?.thresholds?.strong ??
-        preferences.strongThresholdDefault,
+      threshold_primary: primaryThreshold,
+      threshold_strong: strongThreshold,
       notes,
     };
 
@@ -217,8 +222,14 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
         )
       : existing.notifications;
 
-    const cadenceDays = normalizeCadenceDays(
+    const desiredCadenceDays = normalizeCadenceDays(
       payload.cadence?.days ?? existing.cadence.days
+    );
+    const storedCadenceDays = normalizeCadenceDays(
+      desiredToStoredCadence(
+        desiredCadenceDays,
+        notificationSettings.thresholds.primary
+      )
     );
 
     const icon =
@@ -235,7 +246,7 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
       category: payload.category ?? existing.category,
       icon,
       notes,
-      cadence_days: cadenceDays,
+      cadence_days: storedCadenceDays,
       notifications_enabled: notificationSettings.enabled,
       notify_web_push: notificationSettings.channels.webPush,
       notify_email: notificationSettings.channels.email,
@@ -398,10 +409,6 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
 }));
 
 function mapDbItemToAkiItem(row: Database["public"]["Tables"]["items"]["Row"]): AkiItem {
-  const cadenceDays = normalizeCadenceDays(
-    row.cadence_days
-  );
-
   const notifications: NotificationSettings = {
     enabled: row.notifications_enabled,
     channels: {
@@ -414,6 +421,13 @@ function mapDbItemToAkiItem(row: Database["public"]["Tables"]["items"]["Row"]): 
       strong: row.threshold_strong,
     },
   };
+
+  const storedCadenceDays = normalizeCadenceDays(row.cadence_days);
+  const desiredCadenceDays = storedToDesiredCadence(
+    storedCadenceDays,
+    notifications.thresholds.primary
+  );
+  const cadenceDays = roundCadenceForDisplay(desiredCadenceDays);
 
   return {
     id: row.id,
@@ -490,5 +504,54 @@ function normalizeCadenceDays(value?: number | null, fallback = 7) {
   }
   return fallback;
 }
+
+
+
+const MIN_THRESHOLD = 1;
+const MAX_THRESHOLD = 99;
+
+function clampThreshold(value: number): number {
+  if (!Number.isFinite(value)) return 70;
+  return Math.min(MAX_THRESHOLD, Math.max(MIN_THRESHOLD, value));
+}
+
+function decayFactor(threshold: number): number {
+  const clamped = clampThreshold(threshold) / 100;
+  const lambda = -Math.log(1 - clamped);
+  return Number.isFinite(lambda) && lambda > 0 ? lambda : 1;
+}
+
+const DISPLAY_CADENCE_DECIMALS = 1;
+const STORED_CADENCE_DECIMALS = 6;
+
+function desiredToStoredCadence(desiredDays: number, threshold: number): number {
+  const raw = desiredDays / decayFactor(threshold);
+  const safe = Math.max(0.01, raw);
+  return roundTo(safe, STORED_CADENCE_DECIMALS);
+}
+
+function storedToDesiredCadence(storedDays: number, threshold: number): number {
+  const raw = storedDays * decayFactor(threshold);
+  return Math.max(0.01, raw);
+}
+
+function roundCadenceForDisplay(value: number): number {
+  return Math.max(0.01, roundTo(value, DISPLAY_CADENCE_DECIMALS));
+}
+
+function roundTo(value: number, decimals: number): number {
+  if (!Number.isFinite(value)) return 0;
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
+
+
+
+
+
+
+
+
 
 

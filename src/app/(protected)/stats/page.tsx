@@ -1,6 +1,5 @@
 ﻿"use client";
 
-import Link from "next/link";
 import { useMemo } from "react";
 
 import { ScoreIndicator } from "@/components/score-indicator";
@@ -34,20 +33,12 @@ export default function StatsPage() {
   const cadenceDrift = useMemo(() => calculateCadenceDrift(items, logs), [items, logs]);
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-100">統計ダッシュボード</h1>
-          <p className="text-sm text-slate-400">
-            最近のログ傾向やアイテム別の再燃度をチェックできます。
-          </p>
-        </div>
-        <Link
-          href="/"
-          className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-emerald-400/70 hover:text-emerald-200"
-        >
-          ホームに戻る
-        </Link>
+    <div className="space-y-5">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold text-slate-100">統計ダッシュボード</h1>
+        <p className="text-sm text-slate-400">
+          最近のログ傾向やアイテム別の再燃度をチェックできます。
+        </p>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

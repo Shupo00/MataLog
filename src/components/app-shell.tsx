@@ -68,7 +68,7 @@ export default function AppShell({ children }: PropsWithChildren) {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="border-b border-slate-800 bg-slate-900/70 backdrop-blur">
+      <div className="sticky top-0 z-40 border-b border-slate-800 bg-slate-900/80 backdrop-blur">
         <div className="mx-auto max-w-4xl px-6 py-2 sm:px-10 sm:py-4">
           <header className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
@@ -82,7 +82,7 @@ export default function AppShell({ children }: PropsWithChildren) {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex-1">{renderNavLinks()}</div>
-              <div className="flex items-center gap-3 justify-start sm:justify-end">
+              <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
                 <Link
                   href="/items/new"
                   className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-emerald-300"
@@ -101,7 +101,7 @@ export default function AppShell({ children }: PropsWithChildren) {
           </header>
         </div>
       </div>
-      <main className="mx-auto max-w-4xl px-6 pb-24 pt-12 sm:px-10 sm:pb-28">{children}</main>
+      <main className="mx-auto max-w-4xl px-6 pb-24 pt-10 sm:px-10 sm:pb-28 sm:pt-10">{children}</main>
     </div>
   );
 }

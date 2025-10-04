@@ -1,6 +1,5 @@
 ﻿"use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { useSession, useSupabaseClient } from "@supabase/auth-helpers-react";
@@ -43,20 +42,12 @@ export default function LogsPage() {
   }, [filteredLogs]);
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-100">ログ一覧</h1>
-          <p className="text-sm text-slate-400">
-            各対象の記録を時系列で確認できます。フィルターで対象を絞り込むこともできます。
-          </p>
-        </div>
-        <Link
-          href="/"
-          className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-emerald-400/70 hover:text-emerald-200"
-        >
-          ホームに戻る
-        </Link>
+    <div className="space-y-4">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold text-slate-100">ログ一覧</h1>
+        <p className="text-sm text-slate-400">
+          各対象の記録を時系列で確認できます。フィルターで対象を絞り込むこともできます。
+        </p>
       </header>
 
       <div className="flex flex-wrap items-center gap-3 text-sm">

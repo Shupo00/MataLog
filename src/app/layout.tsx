@@ -17,10 +17,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "またログ | Matalog",
-  description: "欲望のタイミングを設計する再訪ログアプリです。",
+  description: "再会のタイミングを設計して知らせる習慣ログアプリです。",
   icons: {
     icon: [
-      { url: "matalog-favicon.png?v=20251004", type: "image/png" },
+      { url: "dark_square_1024.png?v=20251004", type: "image/png" },
     ],
   },
 };
@@ -43,3 +43,4 @@ export default async function RootLayout({
     </html>
   );
 }
+

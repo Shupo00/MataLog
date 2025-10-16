@@ -13,7 +13,6 @@ interface ItemRow {
   category: string;
   cadence_days: number | null;
   notifications_enabled: boolean;
-  notify_web_push: boolean;
   notify_email: boolean;
   notify_strong: boolean;
   threshold_primary: number;

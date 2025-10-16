@@ -9,37 +9,6 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          display_name: string | null;
-          avatar_url: string | null;
-          created_at: string | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          id: string;
-          display_name?: string | null;
-          avatar_url?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          display_name?: string | null;
-          avatar_url?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "profiles_id_fkey";
-            columns: ["id"];
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
       items: {
         Row: {
           id: string;
@@ -155,13 +124,6 @@ export interface Database {
           user_id: string;
           primary_threshold_default: number;
           strong_threshold_default: number;
-          notify_hour_start: number;
-          notify_hour_end: number;
-          dnd_start: string | null;
-          dnd_end: string | null;
-          weekly_digest_weekday: number | null;
-          timezone: string;
-          notify_channel: "webpush" | "email" | "both";
           created_at: string;
           updated_at: string;
         };
@@ -169,13 +131,6 @@ export interface Database {
           user_id: string;
           primary_threshold_default?: number;
           strong_threshold_default?: number;
-          notify_hour_start?: number;
-          notify_hour_end?: number;
-          dnd_start?: string | null;
-          dnd_end?: string | null;
-          weekly_digest_weekday?: number | null;
-          timezone?: string;
-          notify_channel?: "webpush" | "email" | "both";
           created_at?: string;
           updated_at?: string;
         };
@@ -183,13 +138,6 @@ export interface Database {
           user_id?: string;
           primary_threshold_default?: number;
           strong_threshold_default?: number;
-          notify_hour_start?: number;
-          notify_hour_end?: number;
-          dnd_start?: string | null;
-          dnd_end?: string | null;
-          weekly_digest_weekday?: number | null;
-          timezone?: string;
-          notify_channel?: "webpush" | "email" | "both";
           created_at?: string;
           updated_at?: string;
         };
@@ -254,49 +202,6 @@ export interface Database {
             foreignKeyName: "notifications_item_id_fkey";
             columns: ["item_id"];
             referencedRelation: "items";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
-      push_subscriptions: {
-        Row: {
-          id: string;
-          user_id: string;
-          endpoint: string;
-          p256dh: string;
-          auth: string;
-          user_agent: string | null;
-          created_at: string;
-          last_success_at: string | null;
-          is_active: boolean;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          endpoint: string;
-          p256dh: string;
-          auth: string;
-          user_agent?: string | null;
-          created_at?: string;
-          last_success_at?: string | null;
-          is_active?: boolean;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          endpoint?: string;
-          p256dh?: string;
-          auth?: string;
-          user_agent?: string | null;
-          created_at?: string;
-          last_success_at?: string | null;
-          is_active?: boolean;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "push_subscriptions_user_id_fkey";
-            columns: ["user_id"];
-            referencedRelation: "users";
             referencedColumns: ["id"];
           }
         ];

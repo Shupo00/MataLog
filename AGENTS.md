@@ -10,23 +10,9 @@
 **preferences**（ユーザー設定）
 
 * user_id (pk)
-* dnd_start (time, nullable)  // 現状未使用でも保持
-* dnd_end (time, nullable)
-* weekly_digest_weekday (int, nullable)
-* timezone
-* **notify_channel text not null default 'both' check (notify_channel in ('webpush','email','both'))**
-
-**push_subscriptions**（Web Push端末登録）
-
-* id (uuid, pk)
-* user_id (fk → users)
-* endpoint (text not null)
-* p256dh (text not null)
-* auth (text not null)
-* user_agent (text)
-* created_at timestamptz default now()
-* last_success_at timestamptz
-* is_active boolean default true
+* primary_threshold_default (smallint, default 70)
+* strong_threshold_default (smallint, default 85)
+* created_at, updated_at
 
 **notifications**
 
@@ -42,7 +28,6 @@
 * logs(item_id, at desc)
 * items(user_id, category)
 * items(next_fire_at_primary), items(next_fire_at_strong)
-* push_subscriptions(user_id, is_active)
 
 ---
 
@@ -94,7 +79,7 @@ item.next_fire_at_strong  = nextFireAt(item, last, item.threshold_strong)
 
 * **フロント**: Next.js（App Router）+ TypeScript + Tailwind + shadcn/ui + Recharts
 * **バック**: Supabase（Auth/DB/Storage/Edge Functions/cron）
-* **通知**: Supabase Edge Functions + 1h/3h/1d 間隔の `cron` / Web Push + メール（任意）
+* **通知**: Supabase Edge Functions + 1h/3h/1d 間隔の `cron` / Email
 * **分析**: SQL + dbt（任意）
 * **インフラ代替案**: Cloudflare D1/Workers + Push / Firebase
 
@@ -211,7 +196,7 @@ from items i;
    * ログ作成後に `recalc_next_fire` を呼ぶ
    * アイテム編集で cadence/threshold 変更時も同様
    * ホーム/詳細で またスコア をオンデマンド計算表示
-6. **通知チャネル**（Web Push/Email）設定
+6. **通知チャネル**（メールのみ）
 7. **E2E動作確認** & 計測（通知→実行率）
 
 ---
@@ -268,93 +253,17 @@ $$;
   4. `next_fire_at_strong  = compute_next_fire(last_at, sigma_hours, threshold_strong)`
   5. `items` を更新
 
-**TypeScript 雛形**（Supabase Edge Functions）
+**TypeScript 雛形（メールのみ）**
 
 ```ts
-import { serve } from "https://deno.land/std/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+const { data: user } = await supabase.auth.admin.getUserById(it.user_id);
+const email = user?.user?.email;
 
-serve(async (req) => {
-  try {
-    const { item_id } = await req.json();
-    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-
-    // 1) item と last log
-    const { data: item } = await supabase.from('items').select('*').eq('id', item_id).single();
-    const { data: last } = await supabase.from('logs').select('at, satisfaction').eq('item_id', item_id).order('at', { ascending:false }).limit(1).maybeSingle();
-
-    if (!item || !last) {
-      // 未体験：次回発火は無し
-      await supabase.from('items').update({ next_fire_at_primary: null, next_fire_at_strong: null }).eq('id', item_id);
-      return new Response(JSON.stringify({ ok: true }));
-    }
-
-    const s = (last.satisfaction ?? 50) / 100;
-    let sigmaDays: number;
-    if (item.cadence_mode === 'fixed') sigmaDays = item.cadence_days;
-    else sigmaDays = item.tau_days * (1 + 0.4 * s);
-
-    const sigmaHours = sigmaDays * 24;
-    const next = async (thr: number) => {
-      const { data } = await supabase.rpc('compute_next_fire', { last_at: last.at, sigma_hours: sigmaHours, threshold: thr });
-      return data as string | null; // timestamptz
-    };
-
-    const p = await next(item.threshold_primary);
-    const g = await next(item.threshold_strong);
-
-    await supabase.from('items').update({ next_fire_at_primary: p, next_fire_at_strong: g }).eq('id', item_id);
-    return new Response(JSON.stringify({ ok: true }));
-  } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500 });
-  }
-});
-```
-
----
-
-## Edge Function: `notify`（cron起動）
-
-* **スケジュール**: 15分毎（`crontab: */15 * * * *`）
-* **処理**:
-
-  1. `now()` 時点で `next_fire_at_primary/strong` を超えたアイテムを取得
-  2. 重複防止: 当日同一レベル・同一チャネルは一度のみ（`notifications` 参照）
-  3. **配信チャネル分岐**（`preferences.notify_channel`）
-
-     * `webpush` → Web Push 送信
-     * `email` → メール送信
-     * `both` → 両方送信（失敗したチャネルのみリトライ）
-  4. 送信ログを `notifications` に記録
-  5. 送信後、`items.next_fire_at_*` を `NULL` に（次のログまで再発火なし）
-
-**TypeScript 擬似コード（要点）**
-
-```ts
-const prefs = await supabase.from('preferences').select('notify_channel, timezone').eq('user_id', it.user_id).single();
-const channel = prefs?.notify_channel ?? 'both';
-
-if (channel === 'webpush' || channel === 'both') {
-  const subs = await supabase.from('push_subscriptions').select('*').eq('user_id', it.user_id).eq('is_active', true);
-  for (const s of subs.data ?? []) {
-    const ok = await sendWebPush(s.endpoint, s.p256dh, s.auth, payload).catch(() => false);
-    if (!ok) markInactive(s.id);
-    logNotification(it.id, 'webpush', ok);
-  }
-}
-
-if (channel === 'email' || channel === 'both') {
-  const ok = await sendEmail(user.email, subject(it), body(it, またスコア)).catch(() => false);
+if (email && it.notify_email) {
+  const ok = await sendEmail(email, subject(it), body(it, またスコア)).catch(() => false);
   logNotification(it.id, 'email', ok);
 }
 ```
-
-**Web Push 送信の実装メモ**
-
-* PWA/Service Worker 必須（`service-worker.js` で `push` イベントを受信して `showNotification`）
-* 端末登録: `registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: VAPID_PUBLIC })`
-* 取得した `endpoint/p256dh/auth` を `push_subscriptions` に保存
-* Edge では VAPID 署名を付けて HTTP リクエストで `endpoint` に送信（Deno対応の実装を利用）
 
 **メール送信 実装メモ**
 
@@ -373,15 +282,10 @@ if (channel === 'email' || channel === 'both') {
   * `t = now - last_at`（秒→時間）
   * `σ` は上記と同じ規則でUI側でも導出
   * `またスコア = 100 * (1 - exp(-t/σ))`（MVPは `n=1` でOK）
-* **Web Push登録フロー**
-
-  1. 初回起動で通知許可をリクエスト
-  2. `navigator.serviceWorker.register('/service-worker.js')`
-  3. `pushManager.subscribe(...)` で `endpoint/p256dh/auth` を取得
-  4. API経由で `push_subscriptions` に保存
+* **Web Push登録フロー**: 現在は未サポート（メールのみ運用）
 * **ユーザー設定**
 
-  * `preferences.notify_channel` を選択（webpush/email/both）
+  * 通知チャネルは現在メール固定（通知設定はメールのみ）
   * 将来拡張: 端末単位の on/off, テスト通知
 
 ---

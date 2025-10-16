@@ -41,15 +41,8 @@ export interface AkiLog {
 }
 
 export interface UserPreferences {
-  timezone: string;
   primaryThresholdDefault: number;
   strongThresholdDefault: number;
-  notifyHourStart: number; // 0-23
-  notifyHourEnd: number; // 0-23
-  notifyChannel: "webpush" | "email" | "both";
-  dndStart: string | null;
-  dndEnd: string | null;
-  weeklyDigestWeekday: number | null;
 }
 
 export interface AkiState {

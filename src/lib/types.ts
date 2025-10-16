@@ -13,7 +13,6 @@ export interface ThresholdSettings {
 export interface NotificationSettings {
   enabled: boolean;
   channels: {
-    webPush: boolean;
     email: boolean;
   };
   strongEnabled: boolean;

@@ -174,7 +174,6 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
       icon,
       cadence_days: storedCadenceDays,
       notifications_enabled: notificationsEnabled && emailEnabled,
-      notify_web_push: false,
       notify_email: emailEnabled,
       notify_strong: payload.notifications?.strongEnabled ?? false,
       threshold_primary: primaryThreshold,
@@ -236,7 +235,6 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
       notes,
       cadence_days: storedCadenceDays,
       notifications_enabled: notificationSettings.enabled && notificationSettings.channels.email,
-      notify_web_push: false,
       notify_email: notificationSettings.channels.email,
       notify_strong: notificationSettings.strongEnabled,
       threshold_primary: notificationSettings.thresholds.primary,
@@ -380,7 +378,6 @@ function mapDbItemToAkiItem(row: Database["public"]["Tables"]["items"]["Row"]): 
   const notifications: NotificationSettings = {
     enabled: row.notifications_enabled,
     channels: {
-      webPush: false,
       email: row.notify_email,
     },
     strongEnabled: row.notify_strong,
@@ -427,7 +424,7 @@ function mergeNotificationSettings(
 ): NotificationSettings {
   const base: NotificationSettings = current ?? {
     enabled: true,
-    channels: { webPush: false, email: true },
+    channels: { email: true },
     strongEnabled: false,
     thresholds: {
       primary: prefs.primaryThresholdDefault,
@@ -440,7 +437,6 @@ function mergeNotificationSettings(
   return {
     enabled: overrides.enabled ?? base.enabled,
     channels: {
-      webPush: false,
       email: overrides.channels?.email ?? base.channels.email,
     },
     strongEnabled: overrides.strongEnabled ?? base.strongEnabled,

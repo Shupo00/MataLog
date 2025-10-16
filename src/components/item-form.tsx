@@ -309,7 +309,7 @@ export function mapFormValuesToCreatePayload(values: ItemFormValues): CreateItem
     cadence: buildCadence(values),
     notifications: {
       enabled: values.notifyEmail,
-      channels: { webPush: false, email: values.notifyEmail },
+      channels: { email: values.notifyEmail },
       strongEnabled: values.strongEnabled,
       thresholds: {
         primary: values.primaryThreshold,
@@ -328,7 +328,7 @@ export function mapFormValuesToUpdatePayload(values: ItemFormValues): UpdateItem
     cadence: buildCadence(values),
     notifications: {
       enabled: values.notifyEmail,
-      channels: { webPush: false, email: values.notifyEmail },
+      channels: { email: values.notifyEmail },
       strongEnabled: values.strongEnabled,
       thresholds: {
         primary: values.primaryThreshold,

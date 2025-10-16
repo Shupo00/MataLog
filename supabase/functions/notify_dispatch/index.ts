@@ -1,6 +1,5 @@
-﻿import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4";
-import webpush from "npm:web-push@3.5.0";
 
 type NotificationLevel = "primary" | "strong";
 
@@ -28,32 +27,6 @@ interface LogRow {
   satisfaction: number | null;
 }
 
-interface ProfileRow {
-  display_name: string | null;
-}
-
-interface PushSubscriptionRow {
-  id: string;
-  endpoint: string;
-  p256dh: string;
-  auth: string;
-  user_agent: string | null;
-  last_success_at: string | null;
-  is_active: boolean;
-}
-
-interface PreferencesRow {
-  primary_threshold_default: number;
-  strong_threshold_default: number;
-  notify_hour_start: number;
-  notify_hour_end: number;
-  dnd_start: string | null;
-  dnd_end: string | null;
-  weekly_digest_weekday: number | null;
-  timezone: string;
-  notify_channel: "webpush" | "email" | "both";
-}
-
 interface ServePayload {
   dryRun?: boolean;
   now?: string;
@@ -76,8 +49,6 @@ interface NotificationSummary {
 interface UserContext {
   email: string;
   displayName: string | null;
-  preferences: PreferencesRow | null;
-  pushSubscriptions: PushSubscriptionRow[];
 }
 
 interface RiiMetrics {
@@ -91,20 +62,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const APP_URL = (Deno.env.get("APP_URL") ?? "https://app.matalog.local").replace(/\/$/, "");
 
-const VAPID_PUBLIC_KEY = Deno.env.get("PUSH_VAPID_PUBLIC_KEY") ?? "";
-const VAPID_PRIVATE_KEY = Deno.env.get("PUSH_VAPID_PRIVATE_KEY") ?? "";
-const VAPID_SUBJECT = Deno.env.get("PUSH_VAPID_SUBJECT") ?? "";
-
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") ?? "";
-
-const WEB_PUSH_READY = Boolean(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY && VAPID_SUBJECT);
-
-if (WEB_PUSH_READY) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-} else {
-  console.warn("notify_dispatch: Web Push disabled (missing VAPID env vars)");
-}
 
 if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
   console.warn("notify_dispatch: Email dispatch disabled (missing Resend env vars)");
@@ -197,39 +156,15 @@ serve(async (req) => {
       const metrics = computeRiiMetrics(event.item, logs, now);
       const message = buildNotificationMessage(event.item, metrics, event.level);
       const deeplink = `${APP_URL}/items/${event.item.id}`;
-        const preference = userContext.preferences?.notify_channel ?? "both";
-        const allowWebPush = preference === "webpush" || preference === "both";
-        const allowEmail = preference === "email" || preference === "both";
 
       const attemptedChannels: string[] = [];
       const successfulChannels: string[] = [];
+      let failureReason: string | undefined;
 
-      if (!body.dryRun && allowWebPush && event.item.notify_web_push && userContext.pushSubscriptions.length > 0) {
-        const pushResult = await sendWebPushNotifications(supabase, userContext.pushSubscriptions, {
-          title: message.title,
-          body: message.body,
-          url: deeplink,
-          itemId: event.item.id,
-          level: event.level,
-          score: metrics.score,
-        });
+      const canSendEmail =
+        !body.dryRun && event.item.notify_email && Boolean(userContext.email);
 
-        if (pushResult.attempted) {
-          attemptedChannels.push("webpush");
-          summary.attempts += 1;
-        }
-
-        if (pushResult.success) {
-          successfulChannels.push("webpush");
-          summary.successes += 1;
-          await recordNotification(supabase, event.item.id, event.item.user_id, "webpush", event.level, metrics.score, now.toISOString(), true, {
-            title: message.title,
-            body: message.body,
-          });
-        }
-      }
-
-      if (!body.dryRun && allowEmail && event.item.notify_email && userContext.email) {
+      if (canSendEmail) {
         const emailResult = await sendEmailNotification(
           userContext.email,
           userContext.displayName,
@@ -251,6 +186,16 @@ serve(async (req) => {
           await recordNotification(supabase, event.item.id, event.item.user_id, "email", event.level, metrics.score, now.toISOString(), true, {
             subject: emailResult.subject,
           });
+        } else {
+          failureReason = "dispatch-failed";
+        }
+      } else {
+        if (body.dryRun) {
+          failureReason = "dry-run";
+        } else if (!event.item.notify_email) {
+          failureReason = "channel-unavailable";
+        } else if (!userContext.email) {
+          failureReason = "missing-recipient";
         }
       }
 
@@ -261,7 +206,7 @@ serve(async (req) => {
         level: event.level,
         channels: attemptedChannels,
         success: successfulChannels.length > 0,
-        reason: successfulChannels.length > 0 ? undefined : "dispatch-failed",
+        reason: successfulChannels.length > 0 ? undefined : failureReason ?? "dispatch-failed",
       });
     }
 
@@ -377,28 +322,8 @@ async function getUserContext(
     return cache.get(userId) ?? null;
   }
 
-  const [profileResult, preferencesResult, pushResult, userResult] = await Promise.all([
-    supabase.from<ProfileRow>("profiles").select("display_name").eq("id", userId).maybeSingle(),
-    supabase.from<PreferencesRow>("preferences").select("*").eq("user_id", userId).maybeSingle(),
-    supabase
-      .from<PushSubscriptionRow>("push_subscriptions")
-      .select("id, endpoint, p256dh, auth, user_agent, last_success_at, is_active")
-      .eq("user_id", userId)
-      .eq("is_active", true),
-    supabase.auth.admin.getUserById(userId),
-  ]);
+  const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
 
-  if (profileResult.error) {
-    console.error("notify_dispatch: profile lookup error", profileResult.error);
-  }
-  if (preferencesResult.error) {
-    console.error("notify_dispatch: preferences lookup error", preferencesResult.error);
-  }
-  if (pushResult.error) {
-    console.error("notify_dispatch: push subscription lookup error", pushResult.error);
-  }
-
-  const { data: userData, error: userError } = userResult;
   if (userError || !userData?.user) {
     console.error("notify_dispatch: user lookup error", userError);
     cache.set(userId, null);
@@ -407,14 +332,13 @@ async function getUserContext(
 
   const context: UserContext = {
     email: userData.user.email ?? "",
-    displayName: profileResult.data?.display_name ?? null,
-    preferences: preferencesResult.data ?? null,
-    pushSubscriptions: pushResult.data ?? [],
+    displayName: resolveDisplayName(userData.user),
   };
 
   cache.set(userId, context);
   return context;
 }
+
 
 
 async function loadRecentLogs(supabase: DatabaseClient, itemId: string) {
@@ -431,64 +355,6 @@ async function loadRecentLogs(supabase: DatabaseClient, itemId: string) {
   }
 
   return data;
-}
-
-async function sendWebPushNotifications(
-  supabase: DatabaseClient,
-  subscriptions: PushSubscriptionRow[],
-  payload: { title: string; body: string; url: string; itemId: string; level: NotificationLevel; score: number }
-): Promise<{ attempted: boolean; success: boolean }> {
-  if (!WEB_PUSH_READY || subscriptions.length === 0) {
-    return { attempted: false, success: false };
-  }
-
-  let attempted = false;
-  let success = false;
-  const body = JSON.stringify({
-    title: payload.title,
-    body: payload.body,
-    data: {
-      url: payload.url,
-      itemId: payload.itemId,
-      level: payload.level,
-      score: payload.score,
-    },
-  });
-
-  const nowIso = new Date().toISOString();
-
-  for (const sub of subscriptions) {
-    attempted = true;
-    try {
-      await webpush.sendNotification(
-        {
-          endpoint: sub.endpoint,
-          keys: {
-            p256dh: sub.p256dh,
-            auth: sub.auth,
-          },
-        },
-        body,
-        { TTL: 3600 }
-      );
-      success = true;
-      await supabase
-          .from("push_subscriptions")
-          .update({ last_success_at: nowIso, is_active: true })
-          .eq("id", sub.id);
-    } catch (error) {
-      console.error("notify_dispatch: web push error", error);
-      const statusCode = (error as { statusCode?: number }).statusCode ?? 0;
-      if (statusCode === 404 || statusCode === 410) {
-        await supabase
-            .from("push_subscriptions")
-            .update({ is_active: false })
-            .eq("id", sub.id);
-      }
-    }
-  }
-
-  return { attempted, success };
 }
 
 async function sendEmailNotification(
@@ -591,6 +457,8 @@ function corsHeaders(requestHeaders: Headers) {
     "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
   };
 }
+
+
 
 
 

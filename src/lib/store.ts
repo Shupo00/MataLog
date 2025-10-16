@@ -62,18 +62,8 @@ interface AkiStoreState extends AkiState {
 }
 
 const defaultPreferences: UserPreferences = {
-  timezone:
-    typeof Intl !== "undefined"
-      ? Intl.DateTimeFormat().resolvedOptions().timeZone
-      : "UTC",
   primaryThresholdDefault: 70,
   strongThresholdDefault: 85,
-  notifyHourStart: 9,
-  notifyHourEnd: 21,
-  notifyChannel: "both",
-  dndStart: null,
-  dndEnd: null,
-  weeklyDigestWeekday: null,
 };
 
 const initialState: AkiState = {
@@ -139,16 +129,8 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
 
       const preferences = prefsRow
         ? {
-            ...defaultPreferences,
-            timezone: prefsRow.timezone ?? defaultPreferences.timezone,
             primaryThresholdDefault: prefsRow.primary_threshold_default,
             strongThresholdDefault: prefsRow.strong_threshold_default,
-            notifyHourStart: prefsRow.notify_hour_start,
-            notifyHourEnd: prefsRow.notify_hour_end,
-            notifyChannel: prefsRow.notify_channel ?? defaultPreferences.notifyChannel,
-            dndStart: prefsRow.dnd_start,
-            dndEnd: prefsRow.dnd_end,
-            weeklyDigestWeekday: prefsRow.weekly_digest_weekday,
           }
         : defaultPreferences;
 
@@ -179,15 +161,21 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
       desiredToStoredCadence(desiredCadenceDays, primaryThreshold)
     );
 
+    const emailEnabled =
+      payload.notifications?.channels?.email ??
+      (payload.notifications?.enabled ?? true);
+    const notificationsEnabled =
+      payload.notifications?.enabled ?? emailEnabled;
+
     const insertPayload: Database["public"]["Tables"]["items"]["Insert"] = {
       user_id: userId,
       name: payload.name,
       category: payload.category,
       icon,
       cadence_days: storedCadenceDays,
-      notifications_enabled: payload.notifications?.enabled ?? true,
-      notify_web_push: payload.notifications?.channels?.webPush ?? preferences.notifyChannel !== "email",
-      notify_email: payload.notifications?.channels?.email ?? (preferences.notifyChannel !== "webpush"),
+      notifications_enabled: notificationsEnabled && emailEnabled,
+      notify_web_push: false,
+      notify_email: emailEnabled,
       notify_strong: payload.notifications?.strongEnabled ?? false,
       threshold_primary: primaryThreshold,
       threshold_strong: strongThreshold,
@@ -247,8 +235,8 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
       icon,
       notes,
       cadence_days: storedCadenceDays,
-      notifications_enabled: notificationSettings.enabled,
-      notify_web_push: notificationSettings.channels.webPush,
+      notifications_enabled: notificationSettings.enabled && notificationSettings.channels.email,
+      notify_web_push: false,
       notify_email: notificationSettings.channels.email,
       notify_strong: notificationSettings.strongEnabled,
       threshold_primary: notificationSettings.thresholds.primary,
@@ -358,22 +346,6 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
         prefs.primaryThresholdDefault ?? currentPrefs.primaryThresholdDefault,
       strong_threshold_default:
         prefs.strongThresholdDefault ?? currentPrefs.strongThresholdDefault,
-      notify_hour_start: prefs.notifyHourStart ?? currentPrefs.notifyHourStart,
-      notify_hour_end: prefs.notifyHourEnd ?? currentPrefs.notifyHourEnd,
-      timezone: prefs.timezone ?? currentPrefs.timezone,
-      notify_channel: prefs.notifyChannel ?? currentPrefs.notifyChannel,
-      dnd_start:
-        Object.prototype.hasOwnProperty.call(prefs, "dndStart")
-          ? prefs.dndStart ?? null
-          : currentPrefs.dndStart,
-      dnd_end:
-        Object.prototype.hasOwnProperty.call(prefs, "dndEnd")
-          ? prefs.dndEnd ?? null
-          : currentPrefs.dndEnd,
-      weekly_digest_weekday:
-        Object.prototype.hasOwnProperty.call(prefs, "weeklyDigestWeekday")
-          ? prefs.weeklyDigestWeekday ?? null
-          : currentPrefs.weeklyDigestWeekday,
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -393,10 +365,6 @@ export const useAkiStore = create<AkiStoreState>((set, get) => ({
           payload.primary_threshold_default ?? state.preferences.primaryThresholdDefault,
         strongThresholdDefault:
           payload.strong_threshold_default ?? state.preferences.strongThresholdDefault,
-        notifyHourStart:
-          payload.notify_hour_start ?? state.preferences.notifyHourStart,
-        notifyHourEnd:
-          payload.notify_hour_end ?? state.preferences.notifyHourEnd,
       },
     }));
   },
@@ -412,7 +380,7 @@ function mapDbItemToAkiItem(row: Database["public"]["Tables"]["items"]["Row"]): 
   const notifications: NotificationSettings = {
     enabled: row.notifications_enabled,
     channels: {
-      webPush: row.notify_web_push,
+      webPush: false,
       email: row.notify_email,
     },
     strongEnabled: row.notify_strong,
@@ -459,7 +427,7 @@ function mergeNotificationSettings(
 ): NotificationSettings {
   const base: NotificationSettings = current ?? {
     enabled: true,
-    channels: { webPush: true, email: false },
+    channels: { webPush: false, email: true },
     strongEnabled: false,
     thresholds: {
       primary: prefs.primaryThresholdDefault,
@@ -472,7 +440,7 @@ function mergeNotificationSettings(
   return {
     enabled: overrides.enabled ?? base.enabled,
     channels: {
-      webPush: overrides.channels?.webPush ?? base.channels.webPush,
+      webPush: false,
       email: overrides.channels?.email ?? base.channels.email,
     },
     strongEnabled: overrides.strongEnabled ?? base.strongEnabled,

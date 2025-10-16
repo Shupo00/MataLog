@@ -12,7 +12,6 @@ export interface ItemFormValues {
   icon: string;
   notes: string;
   cadenceDays: number;
-  notifyWebPush: boolean;
   notifyEmail: boolean;
   primaryThreshold: number;
   strongThreshold: number;
@@ -134,13 +133,13 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
 
       <section className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-200">リズム設定</h3>
+          <h3 className="text-sm font-semibold text-slate-200">期間プリセット</h3>
           {activePresetLabel ? (
             <span className="text-xs text-slate-400">プリセット: {activePresetLabel}</span>
           ) : null}
         </div>
         <p className="text-xs text-slate-500">
-          次の「ちょうどいいタイミング」までの目安を選びます。クイックプリセットを押すか、日数入力で微調整できます。
+          直感に合わせた候補から周期をサクッと選べます。細かく調整したいときは日数入力を使ってください。
         </p>
         <div className="flex flex-wrap gap-2">
           {QUICK_PRESETS.map((preset) => (
@@ -209,15 +208,6 @@ export function ItemForm({ mode, initialValues, onSubmit, onDelete }: ItemFormPr
       <section className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
         <h3 className="text-sm font-semibold text-slate-200">通知</h3>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-xs text-slate-400">
-            <input
-              type="checkbox"
-              checked={values.notifyWebPush}
-              onChange={(event) => setValues((prev) => ({ ...prev, notifyWebPush: event.target.checked }))}
-              className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-emerald-400 focus:ring-emerald-400"
-            />
-            Web Push
-          </label>
           <label className="flex items-center gap-2 text-xs text-slate-400">
             <input
               type="checkbox"
@@ -318,8 +308,8 @@ export function mapFormValuesToCreatePayload(values: ItemFormValues): CreateItem
     notes: values.notes || undefined,
     cadence: buildCadence(values),
     notifications: {
-      enabled: values.notifyWebPush || values.notifyEmail,
-      channels: { webPush: values.notifyWebPush, email: values.notifyEmail },
+      enabled: values.notifyEmail,
+      channels: { webPush: false, email: values.notifyEmail },
       strongEnabled: values.strongEnabled,
       thresholds: {
         primary: values.primaryThreshold,
@@ -337,8 +327,8 @@ export function mapFormValuesToUpdatePayload(values: ItemFormValues): UpdateItem
     notes: values.notes,
     cadence: buildCadence(values),
     notifications: {
-      enabled: values.notifyWebPush || values.notifyEmail,
-      channels: { webPush: values.notifyWebPush, email: values.notifyEmail },
+      enabled: values.notifyEmail,
+      channels: { webPush: false, email: values.notifyEmail },
       strongEnabled: values.strongEnabled,
       thresholds: {
         primary: values.primaryThreshold,
@@ -354,7 +344,7 @@ function buildCadence(values: ItemFormValues) {
 
 export function buildInitialValuesFromItem(
   item?: AkiItem | null,
-  prefs?: Pick<UserPreferences, "primaryThresholdDefault" | "strongThresholdDefault" | "notifyChannel">
+  prefs?: Pick<UserPreferences, "primaryThresholdDefault" | "strongThresholdDefault">
 ): ItemFormValues {
   if (!item) {
     return {
@@ -363,8 +353,7 @@ export function buildInitialValuesFromItem(
       icon: "",
       notes: "",
       cadenceDays: 7,
-      notifyWebPush: prefs?.notifyChannel !== "email",
-      notifyEmail: prefs?.notifyChannel !== "webpush",
+      notifyEmail: true,
       primaryThreshold: prefs?.primaryThresholdDefault ?? 70,
       strongThreshold: prefs?.strongThresholdDefault ?? 85,
       strongEnabled: false,
@@ -377,7 +366,6 @@ export function buildInitialValuesFromItem(
     icon: item.icon ?? "",
     notes: item.notes ?? "",
     cadenceDays: item.cadence.days,
-    notifyWebPush: item.notifications.channels.webPush,
     notifyEmail: item.notifications.channels.email,
     primaryThreshold: item.notifications.thresholds.primary,
     strongThreshold: item.notifications.thresholds.strong,

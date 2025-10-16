@@ -16,7 +16,6 @@ export default function SettingsPage() {
 
   const [primaryThreshold, setPrimaryThreshold] = useState(preferences.primaryThresholdDefault);
   const [strongThreshold, setStrongThreshold] = useState(preferences.strongThresholdDefault);
-  const [notifyChannel, setNotifyChannel] = useState<"webpush" | "email" | "both">(preferences.notifyChannel);
   const [saving, setSaving] = useState(false);
 
   return (
@@ -52,20 +51,6 @@ export default function SettingsPage() {
               className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
             />
           </label>
-          <label className="text-xs text-slate-400">
-            通知チャネル
-            <select
-              value={notifyChannel}
-              onChange={(event) =>
-                setNotifyChannel(event.target.value as "webpush" | "email" | "both")
-              }
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
-            >
-              <option value="both">Web Push とメール</option>
-              <option value="webpush">Web Push のみ</option>
-              <option value="email">メールのみ</option>
-            </select>
-          </label>
         </div>
         <button
           type="button"
@@ -76,7 +61,6 @@ export default function SettingsPage() {
             const nextPrefs = {
               primaryThresholdDefault: primaryThreshold,
               strongThresholdDefault: strongThreshold,
-              notifyChannel,
             };
             setPreferencesLocal(nextPrefs);
             await updatePreferencesRemote(supabase, session.user.id, nextPrefs);

@@ -52,17 +52,20 @@ interface UserContext {
 
 interface RiiMetrics {
   score: number;
+  adjustedScore: number;
   sigmaDays: number;
   hoursSinceLast: number;
   noveltyFactor: number;
 }
-
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const APP_URL = (Deno.env.get("APP_URL") ?? "https://app.matalog.local").replace(/\/$/, "");
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") ?? "";
+
+const MIN_THRESHOLD = 1;
+const MAX_THRESHOLD = 99;
 
 if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
   console.warn("notify_dispatch: Email dispatch disabled (missing Resend env vars)");
@@ -225,11 +228,11 @@ serve(async (req) => {
 function buildNotificationMessage(item: ItemRow, metrics: RiiMetrics, level: NotificationLevel) {
   const elapsed = formatElapsed(metrics.hoursSinceLast);
   const title = level === "strong"
-    ? `Don't miss the peak - ${item.name}`
-    : `Sweet spot for ${item.name}`;
+    ? `ピーク帯です：${item.name}`
+    : `今がちょうど良いタイミング：${item.name}`;
   const body = level === "strong"
-    ? `Score ${metrics.score} (high). It's the peak window - enjoy it now.`
-    : `It's been ${elapsed}. Score ${metrics.score}. Great moment to revisit.`;
+    ? `${elapsed}ぶり。スコア${metrics.score}（高）。今がピーク帯です。ぜひどうぞ。`
+    : `${elapsed}ぶり。スコア${metrics.score}。良いタイミングです。もう一度どうぞ。`;
 
   return { title, body, elapsed };
 }
@@ -239,16 +242,28 @@ function formatElapsed(hours: number): string {
   if (totalMinutes >= 24 * 60) {
     const days = Math.floor(totalMinutes / (24 * 60));
     const remainingHours = Math.floor((totalMinutes - days * 24 * 60) / 60);
-    if (remainingHours > 0) return `${days}d ${remainingHours}h`;
-    return `${days}d`;
+    if (remainingHours > 0) return `${days}日${remainingHours}時間`;
+    return `${days}日`;
   }
   if (totalMinutes >= 60) {
     const h = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes - h * 60;
-    if (minutes > 0) return `${h}h ${minutes}m`;
-    return `${h}h`;
+    if (minutes > 0) return `${h}時間${minutes}分`;
+    return `${h}時間`;
   }
-  return `${totalMinutes}m`;
+  return `${totalMinutes}分`;
+}
+
+function clampThresholdValue(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 70;
+  }
+  return Math.min(MAX_THRESHOLD, Math.max(MIN_THRESHOLD, value));
+}
+
+function resolveGrowthRate(threshold: number): number {
+  const normalized = clampThresholdValue(threshold) / 100;
+  return -Math.log(1 - normalized);
 }
 
 function computeRiiMetrics(item: ItemRow, logs: LogRow[], now: Date): RiiMetrics {
@@ -257,17 +272,32 @@ function computeRiiMetrics(item: ItemRow, logs: LogRow[], now: Date): RiiMetrics
   const hoursSinceLast = Math.max(0, (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60));
   const sigmaDays = determineSigmaDays(item);
   const sigmaHours = sigmaDays * 24;
+  const growthRate = resolveGrowthRate(item.threshold_primary);
 
-  const base = sigmaHours > 0 ? 1 - Math.exp(-hoursSinceLast / sigmaHours) : 1;
+  const normalizedTime = sigmaHours > 0 ? hoursSinceLast / sigmaHours : 0;
+  const baseScore = 1 - Math.exp(-growthRate * normalizedTime);
   const noveltyFactor = computeNoveltyFactor(logs, sigmaHours);
-  const score = clamp(Math.round(100 * base * noveltyFactor), 0, 100);
+  const rawScore = clamp(Math.round(baseScore * 100), 0, 100);
+  const adjustedScore = clamp(Math.round(baseScore * noveltyFactor * 100), 0, 100);
 
-  return { score, sigmaDays, hoursSinceLast, noveltyFactor };
+  return { score: rawScore, adjustedScore, sigmaDays, hoursSinceLast, noveltyFactor };
 }
-
 function determineSigmaDays(item: ItemRow): number {
   const DEFAULT_CADENCE = 7;
-  return Math.max(0.5, item.cadence_days ?? DEFAULT_CADENCE);
+  const MIN_CADENCE = 0.01; // ~15 minutes
+  const stored = item.cadence_days;
+  const growthRate = resolveGrowthRate(item.threshold_primary);
+  if (
+    typeof stored !== "number" ||
+    Number.isNaN(stored) ||
+    stored <= 0 ||
+    !Number.isFinite(growthRate) ||
+    growthRate <= 0
+  ) {
+    return DEFAULT_CADENCE;
+  }
+  const desiredDays = stored * growthRate;
+  return Math.max(MIN_CADENCE, desiredDays);
 }
 
 function computeNoveltyFactor(logs: LogRow[], sigmaHours: number): number {
@@ -280,7 +310,7 @@ function computeNoveltyFactor(logs: LogRow[], sigmaHours: number): number {
     diffs.push(Math.abs(current.getTime() - next.getTime()) / (1000 * 60 * 60));
   }
   const avgGap = diffs.length ? diffs.reduce((a, b) => a + b, 0) / diffs.length : sigmaHours;
-    if (avgGap < sigmaHours / 3) return 0.8;
+  if (avgGap < sigmaHours / 3) return 0.8;
   if (avgGap < sigmaHours / 2) return 0.9;
   return 1;
 }
@@ -371,13 +401,13 @@ async function sendEmailNotification(
 
   const subjectPrefix = level === "strong" ? "ピークタイミング" : "ベストタイミング";
   const subject = `${subjectPrefix}：${itemName} (${metrics.score})`;
-  const salutation = displayName ? `${displayName} さんへ` : "こんにちは";
+  const salutation = displayName ? `${displayName} さん` : "こんにちは";
 
   const html = `
     <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #0f172a;">
       <p>${salutation}</p>
-      <p>最後に「${itemName}」を楽しんでから ${message.elapsed} が経ちました。</p>
-      <p>現在のスコアは <strong>${metrics.score}</strong> です。今が良いタイミングかもしれません。</p>
+      <p>${message.elapsed}ぶりに「${itemName}」のスコアが <strong>${metrics.score}</strong> になりました。</p>
+      <p>${level === "strong" ? `今がピーク帯です。逃さずどうぞ。` : `今がちょうど良いタイミングです。よければもう一度どうぞ。`}</p>
       <p><a href="${deeplink}" style="color: #10b981; text-decoration: none; font-weight: 600;">アプリを開く</a></p>
     </div>
   `;
@@ -445,6 +475,32 @@ async function recordNotification(
   });
 }
 
+function resolveDisplayName(user: { user_metadata?: Record<string, unknown>; email?: string | null }): string | null {
+  const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
+  const getMetadataString = (key: string) => {
+    const value = metadata[key];
+    return typeof value === "string" ? value : null;
+  };
+
+  const candidates = [
+    getMetadataString("full_name"),
+    getMetadataString("name"),
+    getMetadataString("display_name"),
+    getMetadataString("nickname"),
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+
+  const email = user?.email ?? "";
+  if (email && email.includes("@")) {
+    return email.split("@")[0];
+  }
+  return email || null;
+}
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -456,6 +512,7 @@ function corsHeaders(requestHeaders: Headers) {
     "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
   };
 }
+
 
 
 

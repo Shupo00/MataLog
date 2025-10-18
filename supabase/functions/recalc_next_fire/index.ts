@@ -135,7 +135,12 @@ serve(async (req) => {
 
 function determineSigmaDays(item: ItemRow): number {
   const DEFAULT_CADENCE = 7;
-  return Math.max(0.5, item.cadence_days ?? DEFAULT_CADENCE);
+  const MIN_CADENCE = 0.01; // ~15 minutes
+  const stored = item.cadence_days;
+  if (typeof stored !== "number" || Number.isNaN(stored) || stored <= 0) {
+    return DEFAULT_CADENCE;
+  }
+  return Math.max(MIN_CADENCE, stored);
 }
 
 function computeNextFire(

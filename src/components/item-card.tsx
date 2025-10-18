@@ -90,7 +90,7 @@ export function ItemCard({ item, logs, precomputedRii }: ItemCardProps) {
                   <span className="text-slate-300">{formatDateTime(rii.nextPrimaryAt)}</span>
                 </span>
               ) : null}
-              {rii.nextStrongAt ? (
+              {item.notifications.strongEnabled && rii.nextStrongAt ? (
                 <span className="inline-flex items-center gap-1 self-start rounded-full bg-slate-800/70 px-2 py-0.5 text-slate-200 sm:self-auto">
                   <span className="text-rose-300">強通知</span>
                   <span className="text-slate-300">{formatDateTime(rii.nextStrongAt)}</span>

@@ -8,7 +8,10 @@ const MIN_THRESHOLD = 0.05;
 const MAX_THRESHOLD = 0.99;
 
 export interface RiiComputation {
+  /** Score without novelty adjustment (used for threshold comparisons). */
   score: number;
+  /** Score after novelty adjustment (optional analytics). */
+  adjustedScore: number;
   sigmaDays: number;
   growthRate: number;
   lastLog?: AkiLog;
@@ -31,9 +34,12 @@ export function computeRii(
 
   if (!lastLog) {
     const sigmaDays = determineSigmaDays(item);
-    const growthRate = resolveGrowthRate(item.notifications.thresholds.primary);
+    const growthRate = resolveGrowthRate(
+      item.notifications.thresholds.primary
+    );
     return {
       score: 95,
+      adjustedScore: 95,
       sigmaDays,
       growthRate,
       hoursSinceLast: 0,
@@ -51,8 +57,13 @@ export function computeRii(
   const noveltyFactor = computeNoveltyFactor(itemLogs, sigmaHours);
 
   const normalizedTime = sigmaHours > 0 ? hoursSinceLast / sigmaHours : 0;
-  const baseScore = 100 * (1 - Math.exp(-growthRate * normalizedTime));
-  const score = clamp(Math.round(baseScore * noveltyFactor), 0, 100);
+  const baseScore = 1 - Math.exp(-growthRate * normalizedTime);
+  const rawScore = clamp(Math.round(baseScore * 100), 0, 100);
+  const adjustedScore = clamp(
+    Math.round(baseScore * noveltyFactor * 100),
+    0,
+    100
+  );
 
   const nextPrimaryAt = predictNextFire(
     lastLog,
@@ -62,7 +73,8 @@ export function computeRii(
   );
 
   return {
-    score,
+    score: rawScore,
+    adjustedScore,
     sigmaDays,
     growthRate,
     lastLog,
@@ -74,7 +86,7 @@ export function computeRii(
 }
 
 function determineSigmaDays(item: AkiItem): number {
-  return Math.max(0.5, item.cadence.days ?? DEFAULT_CADENCE_DAYS);
+  return Math.max(0.01, item.cadence.days ?? DEFAULT_CADENCE_DAYS);
 }
 
 function computeNoveltyFactor(itemLogs: AkiLog[], sigmaHours: number) {

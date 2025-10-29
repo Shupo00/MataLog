@@ -98,9 +98,6 @@ export default function LoginPage() {
         <p className="mt-6 text-xs text-slate-500">
           アカウントが見つからない場合は、新しいメールでログインすると自動で作成されます。
         </p>
-        <Link href="/" className="mt-6 inline-block text-xs text-slate-400 hover:text-slate-200">
-          ← トップへ戻る
-        </Link>
       </div>
     </div>
   );
